@@ -93,7 +93,15 @@ const client = new Client({
     puppeteer: {
         // BARIS INI WAJIB UNTUK TERMUX:
         executablePath: '/data/data/com.termux/files/usr/bin/chromium-browser',
-        args: ['--no-sandbox', '--disable-setuid-sandbox']
+        args: [
+            '--no-sandbox', 
+            '--disable-setuid-sandbox',
+            '--disable-dev-shm-usage', // Tambahkan ini
+            '--disable-accelerated-2d-canvas', // Tambahkan ini
+            '--no-first-run', // Tambahkan ini
+            '--no-zygote', // Tambahkan ini
+            '--single-process' // Tambahkan ini untuk menghemat RAM HP
+        ],
     }
 });
 
