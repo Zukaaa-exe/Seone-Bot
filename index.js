@@ -32,6 +32,14 @@ Pembayaran hanya valid jika dilakukan melalui *QRIS resmi* ini.
 Transfer melalui DM, link pribadi, atau QR lain = otomatis *dianggap tidak sah.*
 Segala bentuk salah transfer *bukan tanggung jawab admin.*`;
 
+// --- NOTE CARA PESAN (GLOBAL) ---
+const ORDER_NOTE = `
+👇 *CARA PESAN:*
+Tag admin yang bersangkutan dan ketik *.pay* untuk mendapatkan QRIS.
+
+📝 *NOTE:*
+Kirim bukti transfer di grup ini & jangan lupa tag adminnya ya 😙`;
+
 // --- SYARAT & KETENTUAN VILOG (MEMBER VIEW) ---
 const VILOG_TNC = `🔐 *INFORMASI LENGKAP VIA LOGIN (VILOG)* 🔐
 
@@ -76,7 +84,6 @@ const HELP_ADMIN_ONLY = `
 ✤ *.BOOSTERRESET*
 ✤ *.VILOGUPDATE* 
 ✤ *.VILOGRESET*
-✤ *.VILOGTEST* (Cek Tampilan Vilog) ✅
 ✤ *.PTPTOPEN* (Buka Sesi Baru)
 ✤ *.PTPTSET* (Edit Jam Sesi)
 ✤ *.PTPTPAID* (Konfirmasi Bayar) ✅
@@ -197,7 +204,7 @@ client.on('message', async (message) => {
         } catch (error) { message.reply('Mohon maaf, gambar QRIS sedang bermasalah.'); }
     }
 
-    // FITUR GIG & BOOSTER & VILOG
+    // FITUR GIG & BOOSTER & VILOG (MEMBER SIDE)
     if(msg === '.gig') {
         let displayDate = 'Belum ada update';
         let displayTime = '-';
@@ -209,13 +216,8 @@ client.on('message', async (message) => {
                 displayTime = lastUpdate.time;
             } catch (err) { }
         }
-        const GIG_TEMPLATE = `🛒 *GIG PRICELIST TERBARU* 🛒
-🗓️ *Tanggal Update:* ${displayDate}
-🕛 *Pukul:* ${displayTime} WIB
-
-Ini gig pricelist terbaru sesuai tanggal dan waktu update admin.
-👇 *CARA PESAN:*
-Tag admin yang bersangkutan dan ketik *.pay* untuk menampilkan QRIS payment yaaa.`;
+        // Member melihat template GIG + Note Cara Pesan
+        const GIG_TEMPLATE = `🛒 *GIG PRICELIST TERBARU* 🛒\n🗓️ *Tanggal Update:* ${displayDate}\n🕛 *Pukul:* ${displayTime} WIB\n\nIni gig pricelist terbaru sesuai tanggal dan waktu update admin.${ORDER_NOTE}`;
 
         try {
             if (fs.existsSync('./pricelist.png')) {
@@ -236,13 +238,8 @@ Tag admin yang bersangkutan dan ketik *.pay* untuk menampilkan QRIS payment yaaa
                 displayTime = lastUpdate.time;
             } catch (err) { }
         }
-        const BOOSTER_TEMPLATE = `🚀 *BOOSTER PRICELIST TERBARU*
-🗓️ *Tanggal Update:* ${displayDate}
-🕛 *Pukul:* ${displayTime} WIB
-
-Ini harga booster terbaru sesuai update admin.
-👇 *CARA PESAN:*
-Tag admin yang bersangkutan dan ketik *.pay* untuk menampilkan QRIS payment yaaa.`;
+        // Member melihat template BOOSTER + Note Cara Pesan
+        const BOOSTER_TEMPLATE = `🚀 *BOOSTER PRICELIST TERBARU*\n🗓️ *Tanggal Update:* ${displayDate}\n🕛 *Pukul:* ${displayTime} WIB\n\nIni harga booster terbaru sesuai update admin.${ORDER_NOTE}`;
 
         try {
             if (fs.existsSync('./pricelist_booster.png')) {
@@ -252,7 +249,6 @@ Tag admin yang bersangkutan dan ketik *.pay* untuk menampilkan QRIS payment yaaa
         } catch (error) { message.reply('Error sistem.'); }
     }
 
-    // === FITUR VILOG (MEMBER) ===
     if(msg === '.vilog') {
         let displayDate = 'Belum ada update';
         let displayTime = '-';
@@ -265,15 +261,8 @@ Tag admin yang bersangkutan dan ketik *.pay* untuk menampilkan QRIS payment yaaa
             } catch (err) { }
         }
         
-        // Template Vilog dengan TnC Lengkap untuk Member
-        const VILOG_TEMPLATE = `🔐 *VIA LOGIN PRICELIST* 🔐
-🗓️ *Tanggal Update:* ${displayDate}
-🕛 *Pukul:* ${displayTime} WIB
-
-${VILOG_TNC}
-
-👇 *CARA PESAN:*
-Tag admin yang bersangkutan dan ketik *.pay* untuk menampilkan QRIS payment.`;
+        // Member melihat template VILOG + TnC + Note Cara Pesan
+        const VILOG_TEMPLATE = `🔐 *VIA LOGIN PRICELIST* 🔐\n🗓️ *Tanggal Update:* ${displayDate}\n🕛 *Pukul:* ${displayTime} WIB\n\n${VILOG_TNC}${ORDER_NOTE}`;
 
         try {
             if (fs.existsSync('./pricelist_vilog.png')) {
@@ -287,10 +276,9 @@ Tag admin yang bersangkutan dan ketik *.pay* untuk menampilkan QRIS payment.`;
     if (msg.startsWith('.ptptlist')) {
         let robloxUser = message.body.slice(10).trim();
         
-        // 1. Cek format
         if (!robloxUser) {
             console.log(`[LOG] User salah format .ptptlist`);
-            message.reply(`⚠️ *Format Salah!* Kamu lupa memasukkan username.\n\n📝 *Format:*\n.ptptlist [Username Roblox]\n\n✅ *Contoh:*\n.ptptlist DragonSlayer99`);
+            message.reply(`⚠️ *Format Salah!* Kamu lupa memasukkan username.\n\n📝 *Format:*\n.ptptlist [KODE] [Username Roblox]\n\n✅ *Contoh:*\n.ptptlist 24H DragonSlayer99`);
             return;
         }
 
@@ -303,33 +291,27 @@ Tag admin yang bersangkutan dan ketik *.pay* untuk menampilkan QRIS payment.`;
             const rawData = fs.readFileSync('./database_ptpt.json', 'utf8');
             let allSessions = JSON.parse(rawData);
 
-            // Periksa apakah user memasukkan kode sesi di awal
             const args = robloxUser.split(' ');
             let sessionCode = args[0].toUpperCase();
             let actualUser = args.slice(1).join(' ');
 
-            // Jika formatnya .ptptlist [KODE] [USER]
             if (allSessions[sessionCode]) {
                 if(!actualUser) {
                      message.reply(`⚠️ Masukkan username Roblox kamu setelah kode sesi!\nContoh: .ptptlist ${sessionCode} ProPlayer`);
                      return;
                 }
             } else {
-                // Jika format lama/langsung user (untuk single session, atau user bingung)
-                // Kita sarankan lihat update dulu
                 message.reply('⚠️ *Sesi tidak ditemukan atau Format Salah!* \nHarap sertakan Kode Sesi.\nContoh: `.ptptlist 24H Username`\n\nCek daftar sesi aktif dengan: `.ptptupdate`');
                 return;
             }
 
             let currentSession = allSessions[sessionCode];
 
-            // 2. Cek Slot Penuh
             if (currentSession.participants.length >= 20) {
                 message.reply(`❌ Yah, slot sesi *${sessionCode}* sudah penuh (20/20)! Tunggu sesi berikutnya ya.`);
                 return;
             }
 
-            // 3. SATPAM USERNAME ROBLOX (Anti-Duplicate)
             const isRobloxTaken = currentSession.participants.some(p => p.roblox.toLowerCase() === actualUser.toLowerCase());
 
             if (isRobloxTaken) {
@@ -341,7 +323,6 @@ Tag admin yang bersangkutan dan ketik *.pay* untuk menampilkan QRIS payment.`;
             const waName = contact.pushname || contact.number;
             const waNumber = contact.id._serialized;
 
-            // 4. Masukkan Data (Multi-slot Allowed per WA)
             currentSession.participants.push({
                 name: waName,
                 roblox: actualUser,
@@ -349,12 +330,10 @@ Tag admin yang bersangkutan dan ketik *.pay* untuk menampilkan QRIS payment.`;
                 isPaid: false 
             });
 
-            // Simpan Balik
             allSessions[sessionCode] = currentSession;
             fs.writeFileSync('./database_ptpt.json', JSON.stringify(allSessions));
             console.log(`[LOG] User joined Session ${sessionCode}: ${actualUser}`);
 
-            // Output
             let listText = '';
             for (let i = 0; i < 20; i++) {
                 const num = i + 1;
@@ -366,15 +345,8 @@ Tag admin yang bersangkutan dan ketik *.pay* untuk menampilkan QRIS payment.`;
                 }
             }
 
-            const FINAL_TEMPLATE = `📢 SESSION INFO (${sessionCode})
-• Jenis: ${currentSession.sessionType}
-• Waktu: ${currentSession.timeInfo}
-• Status: OPEN (${currentSession.participants.length}/20)
-
---------LIST MEMBER---------
-USN Wa / USN rblox
-${listText}
-_List otomatis terupdate_ ✅`;
+            // Member melihat LIST + Note Cara Pesan
+            const FINAL_TEMPLATE = `📢 SESSION INFO (${sessionCode})\n• Jenis: ${currentSession.sessionType}\n• Waktu: ${currentSession.timeInfo}\n• Status: OPEN (${currentSession.participants.length}/20)\n\n--------LIST MEMBER---------\nUSN Wa / USN rblox\n${listText}\n_List otomatis terupdate_ ✅${ORDER_NOTE}`;
 
             await message.reply(FINAL_TEMPLATE);
 
@@ -404,7 +376,6 @@ _List otomatis terupdate_ ✅`;
                 return;
             }
 
-            // A. Jika user mengetik KODE SPESIFIK -> Tampilkan List Detail
             if (targetCode && allSessions[targetCode]) {
                 let currentSession = allSessions[targetCode];
                 let listText = '';
@@ -418,15 +389,8 @@ _List otomatis terupdate_ ✅`;
                     }
                 }
 
-                const DETAIL_TEMPLATE = `📢 SESSION INFO (${targetCode})
-• Jenis: ${currentSession.sessionType}
-• Waktu: ${currentSession.timeInfo}
-• Status: OPEN (${currentSession.participants.length}/20)
-
---------LIST MEMBER---------
-USN Wa / USN rblox
-${listText}
-_List otomatis terupdate_ ✅`;
+                // Member melihat LIST UPDATE + Note Cara Pesan
+                const DETAIL_TEMPLATE = `📢 SESSION INFO (${targetCode})\n• Jenis: ${currentSession.sessionType}\n• Waktu: ${currentSession.timeInfo}\n• Status: OPEN (${currentSession.participants.length}/20)\n\n--------LIST MEMBER---------\nUSN Wa / USN rblox\n${listText}\n_List otomatis terupdate_ ✅${ORDER_NOTE}`;
                 
                 if (fs.existsSync('./ptpt_image.png')) {
                     await client.sendMessage(message.from, MessageMedia.fromFilePath('./ptpt_image.png'), { caption: DETAIL_TEMPLATE });
@@ -435,7 +399,6 @@ _List otomatis terupdate_ ✅`;
                 }
 
             } else {
-                // B. Jika user HANYA mengetik .ptptupdate -> Tampilkan Ringkasan Semua Sesi
                 let summaryText = `📋 *DAFTAR SESI AKTIF SAAT INI:*\n\n`;
                 
                 sessionKeys.forEach(code => {
@@ -473,30 +436,18 @@ _List otomatis terupdate_ ✅`;
 
         if(msg.startsWith('.p ')) {
             const textToSend = message.body.slice(3).trim();
-            if(!textToSend) {
-                message.reply(`⚠️ *Format Salah!* Masukkan teks broadcast.
-
-📝 *Format:*
-.p [Pesan Kamu]
-
-✅ *Contoh:*
-.p Halo semua, mabar yuk!`);
-                return;
-            }
+            if(!textToSend) { message.reply(`⚠️ *Format Salah!*\n\n📝 *Format:*\n.p [Pesan Kamu]`); return; }
             try {
                 const chat = await message.getChat();
                 let mentions = [];
                 for(let participant of chat.participants) {
-                    try {
-                        const contact = await client.getContactById(participant.id._serialized);
-                        mentions.push(contact);
-                    } catch (err) {}
+                    try { mentions.push(await client.getContactById(participant.id._serialized)); } catch (err) {}
                 }
                 await chat.sendMessage(textToSend, { mentions: mentions });
             } catch (error) {}
         }
 
-        // --- GIG & BOOSTER & VILOG (ADMIN) ---
+        // --- GIG & BOOSTER & VILOG (ADMIN SIDE - UPDATE) ---
         if(msg === '.gigupdate') {
              const chat = await message.getChat();
              const { date, time } = getWaktuIndonesia();
@@ -508,8 +459,8 @@ _List otomatis terupdate_ ✅`;
              let mentions = [];
              for(let p of chat.participants) { try{mentions.push(await client.getContactById(p.id._serialized))}catch(e){} }
              
-             // --- TEMPLATE SERAGAM GIG ---
-             const TPL = `📢 *GIG STOCK UPDATE!* 📢\n🗓️ ${date} | 🕛 ${time} WIB\n\n🔥 *READY STOCK!*\n\n👇 *CARA PESAN:*\nTag admin yang bersangkutan dan ketik *.pay*`;
+             // Template Admin Update + Note Cara Pesan
+             const TPL = `📢 *GIG STOCK UPDATE!* 📢\n🗓️ ${date} | 🕛 ${time} WIB\n\n🔥 *READY STOCK!*${ORDER_NOTE}`;
              
              if(fs.existsSync('./pricelist.png')) {
                  await chat.sendMessage(MessageMedia.fromFilePath('./pricelist.png'), { caption: TPL, mentions: mentions });
@@ -518,17 +469,11 @@ _List otomatis terupdate_ ✅`;
         }
 
         if(msg === '.gigreset') {
-            message.reply('⏳ _Menghapus data update GIG..._');
             try {
                 if(fs.existsSync('./database_update.json')) fs.unlinkSync('./database_update.json');
                 if(fs.existsSync('./pricelist.png')) fs.unlinkSync('./pricelist.png');
-                
-                message.reply('✅ *SUKSES!* Data GIG telah direset. (Member akan melihat "Belum ada update")');
-                console.log(`[ADMIN] GIG Data RESET`);
-            } catch (error) {
-                console.log('Error Gig Reset:', error);
-                message.reply('❌ Gagal mereset data GIG.');
-            }
+                message.reply('✅ *SUKSES!* Data GIG telah direset.');
+            } catch (error) { message.reply('❌ Gagal mereset data GIG.'); }
         }
 
         if(msg === '.boosterupdate') {
@@ -542,8 +487,8 @@ _List otomatis terupdate_ ✅`;
              let mentions = [];
              for(let p of chat.participants) { try{mentions.push(await client.getContactById(p.id._serialized))}catch(e){} }
              
-             // --- TEMPLATE SERAGAM BOOSTER ---
-             const TPL = `📢 *BOOSTER UPDATE!* 📢\n🗓️ ${date} | 🕛 ${time} WIB\n\n🔥 *OPEN SLOT!*\n\n👇 *CARA PESAN:*\nTag admin yang bersangkutan dan ketik *.pay*`;
+             // Template Admin Update + Note Cara Pesan
+             const TPL = `📢 *BOOSTER UPDATE!* 📢\n🗓️ ${date} | 🕛 ${time} WIB\n\n🔥 *OPEN SLOT!*${ORDER_NOTE}`;
              
              if(fs.existsSync('./pricelist_booster.png')) {
                  await chat.sendMessage(MessageMedia.fromFilePath('./pricelist_booster.png'), { caption: TPL, mentions: mentions });
@@ -552,20 +497,13 @@ _List otomatis terupdate_ ✅`;
         }
 
         if(msg === '.boosterreset') {
-            message.reply('⏳ _Menghapus data update BOOSTER..._');
             try {
                 if(fs.existsSync('./database_booster.json')) fs.unlinkSync('./database_booster.json');
                 if(fs.existsSync('./pricelist_booster.png')) fs.unlinkSync('./pricelist_booster.png');
-                
-                message.reply('✅ *SUKSES!* Data Booster telah direset. (Member akan melihat "Belum ada update")');
-                console.log(`[ADMIN] BOOSTER Data RESET`);
-            } catch (error) {
-                console.log('Error Booster Reset:', error);
-                message.reply('❌ Gagal mereset data Booster.');
-            }
+                message.reply('✅ *SUKSES!* Data Booster telah direset.');
+            } catch (error) { message.reply('❌ Gagal mereset data Booster.'); }
         }
 
-        // --- VILOG UPDATE (ADMIN - SERAGAM) ---
         if(msg === '.vilogupdate') {
              const chat = await message.getChat();
              const { date, time } = getWaktuIndonesia();
@@ -577,8 +515,8 @@ _List otomatis terupdate_ ✅`;
              let mentions = [];
              for(let p of chat.participants) { try{mentions.push(await client.getContactById(p.id._serialized))}catch(e){} }
              
-             // --- TEMPLATE SERAGAM VILOG ---
-             const TPL = `📢 *VIA LOGIN (JOKI) UPDATE!* 📢\n🗓️ ${date} | 🕛 ${time} WIB\n\n🔥 *OPEN ORDER!*\n\n👇 *CARA PESAN:*\nTag admin yang bersangkutan dan ketik *.pay*`;
+             // Template Admin Update + Note Cara Pesan
+             const TPL = `📢 *VIA LOGIN (JOKI) UPDATE!* 📢\n🗓️ ${date} | 🕛 ${time} WIB\n\n🔥 *OPEN ORDER!*${ORDER_NOTE}`;
              
              if(fs.existsSync('./pricelist_vilog.png')) {
                  await chat.sendMessage(MessageMedia.fromFilePath('./pricelist_vilog.png'), { caption: TPL, mentions: mentions });
@@ -593,44 +531,19 @@ _List otomatis terupdate_ ✅`;
                 if(fs.existsSync('./database_vilog.json')) fs.unlinkSync('./database_vilog.json');
                 if(fs.existsSync('./pricelist_vilog.png')) fs.unlinkSync('./pricelist_vilog.png');
                 message.reply('✅ *SUKSES!* Data Vilog telah direset.');
-                console.log(`[ADMIN] VILOG Data RESET`);
-            } catch (error) { 
-                console.log('Error Vilog Reset:', error);
-                message.reply('❌ Gagal mereset data Vilog.'); 
-            }
+            } catch (error) { message.reply('❌ Gagal mereset data Vilog.'); }
         }
 
         // =========================================================
         // === ADMIN PTPT MULTI-SESSION MANAGEMENT ===
         // =========================================================
 
-        // 1. OPEN SESI
         if(msg.startsWith('.ptptopen')) {
             const rawBody = message.body.slice(9).trim(); 
             const firstSpace = rawBody.indexOf(' ');
             
-            // CHECK & OUTPUT TUTORIAL (REVISI V45)
             if (firstSpace === -1) {
-                message.reply(`⚠️ *PANDUAN MEMBUKA SESI PTPT* ⚠️
-
-Untuk membuka sesi baru, gunakan format berikut dengan teliti:
-
-📝 *FORMAT COMMAND:*
-.ptptopen [KODE] [JENIS SESI], [INFO WAKTU]
-
-📌 *KETERANGAN:*
-• *KODE*: Identitas unik sesi (Contoh: 24H, 9H, VIP).
-• *JENIS*: Durasi atau tipe sesi (Contoh: 12 Jam, 6 Jam).
-• *WAKTU*: Jadwal mulai dan selesai.
-
-✅ *CONTOH 1 (Jadwal Fix):*
-.ptptopen 24H 12 Jam, 30 Des 20.00 - 08.00 WIB
-
-✅ *CONTOH 2 (Jadwal TBA):*
-.ptptopen 9H 6 Jam, TBA (Menunggu Info)
-
-⚠️ *PENTING:*
-Jangan lupa tanda koma (,) untuk memisahkan Jenis dan Waktu!`);
+                message.reply(`⚠️ *PANDUAN MEMBUKA SESI PTPT* ⚠️\n\n📝 *FORMAT COMMAND:*\n.ptptopen [KODE] [JENIS SESI], [INFO WAKTU]\n\n✅ *CONTOH:*\n.ptptopen 24H 12 Jam, 30 Des 20.00 - 08.00 WIB\n\n⚠️ *PENTING:*\nJangan lupa tanda koma (,) untuk memisahkan Jenis dan Waktu!`);
                 return;
             }
 
@@ -676,15 +589,7 @@ Jangan lupa tanda koma (,) untuk memisahkan Jenis dan Waktu!`);
                 let listText = '';
                 for (let i = 1; i <= 20; i++) listText += `${i}.\n`;
 
-                const PTPT_TEMPLATE = `📢 SESSION INFO OPEN (${sessionCode})
-• Jenis: ${sessionType}
-• Waktu: ${timeInfo}
-• Status: OPEN (0/20)
-
---------LIST MEMBER---------
-USN Wa / USN rblox
-${listText}
-_Ketik: .ptptlist ${sessionCode} [Username] untuk join!_`;
+                const PTPT_TEMPLATE = `📢 SESSION INFO OPEN (${sessionCode})\n• Jenis: ${sessionType}\n• Waktu: ${timeInfo}\n• Status: OPEN (0/20)\n\n--------LIST MEMBER---------\nUSN Wa / USN rblox\n${listText}\n_Ketik: .ptptlist ${sessionCode} [Username] untuk join!_`;
 
                 let mentions = [];
                 for(let participant of chat.participants) {
@@ -700,11 +605,10 @@ _Ketik: .ptptlist ${sessionCode} [Username] untuk join!_`;
 
             } catch (error) {
                 console.log('Error PTPT Open:', error);
-                message.reply('❌ Gagal membuka sesi.');
+                message.reply('❌ Gagal membuka sesi PTPT.');
             }
         }
 
-        // 2. SET/EDIT SESI
         if(msg.startsWith('.ptptset')) {
             const rawBody = message.body.slice(8).trim();
             const firstSpace = rawBody.indexOf(' ');
@@ -735,7 +639,6 @@ _Ketik: .ptptlist ${sessionCode} [Username] untuk join!_`;
             } catch (error) { message.reply('❌ Gagal update.'); }
         }
 
-        // 3. PAID CONFIRMATION
         if(msg.startsWith('.ptptpaid')) {
             const rawBody = message.body.slice(9).trim();
             const firstSpace = rawBody.indexOf(' ');
@@ -813,7 +716,6 @@ _Terima kasih yang sudah lunas!_ ✅`;
             } catch (error) { console.log(error); message.reply('❌ Error confirming payment.'); }
         }
 
-        // 4. REMOVE MEMBER
         if(msg.startsWith('.ptptremove')) {
             const rawBody = message.body.slice(11).trim();
             const firstSpace = rawBody.indexOf(' ');
@@ -854,7 +756,6 @@ _Terima kasih yang sudah lunas!_ ✅`;
             } catch (error) { message.reply('❌ Gagal menghapus.'); }
         }
 
-        // 5. RESET/DELETE SESSION
         if(msg.startsWith('.ptptreset')) {
             const rawBody = message.body.slice(10).trim();
             
@@ -880,7 +781,7 @@ _Terima kasih yang sudah lunas!_ ✅`;
                     let allSessions = JSON.parse(rawData);
 
                     if (allSessions[sessionCode]) {
-                        delete allSessions[sessionCode]; // Hapus sesi spesifik
+                        delete allSessions[sessionCode];
                         fs.writeFileSync('./database_ptpt.json', JSON.stringify(allSessions));
                         message.reply(`✅ Sesi *${sessionCode}* berhasil dihapus.`);
                     } else {
@@ -907,9 +808,7 @@ client.on('group_leave', async (notification) => {
     try {
         const chat = await notification.getChat();
         const contact = await client.getContactById(notification.recipientIds[0]);
-        
         const text = `@${contact.id.user} telah keluar dari grup, jangan lupa bawakan gorengan dan es teh manis se truk untuk member member ku jika kembali lagi 👋`;
-        
         await chat.sendMessage(text, { mentions: [contact] });
         console.log(`[LOG] Member left: ${contact.pushname || contact.number}`);
     } catch (error) { console.log('Error handling group leave:', error); }
