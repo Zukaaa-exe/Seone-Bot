@@ -34,6 +34,7 @@ Segala bentuk salah transfer *bukan tanggung jawab admin.*`;
 
 // --- [GLOBAL] NOTE CARA PESAN ---
 const ORDER_NOTE = `
+---------------------------------------
 Cara Bayar: ketik *.pay* untuk memunculkan QRIS payment.
 
 Note: Kirim bukti transfer di grup ini & jangan lupa tag adminnya ya 😙`;
