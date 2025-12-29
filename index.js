@@ -34,10 +34,10 @@ Segala bentuk salah transfer *bukan tanggung jawab admin.*`;
 
 // --- [BARU] NOTE CARA PESAN (GLOBAL) ---
 const ORDER_NOTE = `
-👇 *CARA PESAN:*
+*CARA PESAN:*
 Tag admin yang bersangkutan dan ketik *.pay* untuk memunculkan QRIS payment.
 
-📝 *NOTE:*
+*NOTE:*
 Kirim bukti transfer di grup ini & jangan lupa tag adminnya ya 😙`;
 
 // --- SYARAT & KETENTUAN VILOG (MEMBER VIEW) ---
@@ -365,8 +365,8 @@ client.on('message', async (message) => {
 USN Wa / USN rblox
 ${listText}
 _List otomatis terupdate_ ✅
-
-_ketik : .ptptlist ${sessionCode} (username) untuk join!_
+❓*Cara Join?*
+*_ketik : .ptptlist ${sessionCode} (username) untuk join!_*
 ${ORDER_NOTE}`;
 
             await message.reply(FINAL_TEMPLATE);
