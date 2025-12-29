@@ -32,6 +32,12 @@ Pembayaran hanya valid jika dilakukan melalui *QRIS resmi* ini.
 Transfer melalui DM, link pribadi, atau QR lain = otomatis *dianggap tidak sah.*
 Segala bentuk salah transfer *bukan tanggung jawab admin.*`;
 
+// --- FOOTER TAMBAHAN KHUSUS PTPT ---
+const PTPT_FOOTER = `
+-------------------------------
+cara bayar: ketik *.pay* untuk memunculkan qris
+note: jangan lupa kirim buktinya ke sini dan tag admin juga ya😙`;
+
 // --- SYARAT & KETENTUAN VILOG (MEMBER VIEW) ---
 const VILOG_TNC = `🔐 *INFORMASI LENGKAP VIA LOGIN (VILOG)* 🔐
 
@@ -62,9 +68,9 @@ Bingung mau ngapain? Cek daftar command di bawah ini:
 ✤ *.PAY*
 ✤ *.GIG*
 ✤ *.BOOSTER*
-✤ *.VILOG*       (Via Login + TnC) 
-✤ *.PTPTLIST*    (Daftar Sesi PTPT)
-✤ *.PTPTUPDATE*  (Cek Daftar Sesi Aktif)
+✤ *.VILOG*      (Via Login + TnC) 
+✤ *.PTPTLIST*   (Daftar Sesi PTPT)
+✤ *.PTPTUPDATE* (Cek Daftar Sesi Aktif)
 ✤ *.HELP*
 ✤ *.PING*`;
 
@@ -78,7 +84,7 @@ const HELP_ADMIN_ONLY = `
 ✤ *.VILOGRESET*
 ✤ *.PTPTOPEN* (Buka Sesi Baru)
 ✤ *.PTPTSET*  (Edit Jam Sesi)
-✤ *.PTPTPAID* (Konfirmasi Bayar) 
+✤ *.PTPTPAID* (Konfirmasi Bayar) ✅
 ✤ *.PTPTREMOVE* (Hapus Member)
 ✤ *.PTPTRESET*  (Tutup/Hapus Sesi)
 ✤ *.P (teks)*`;
@@ -384,7 +390,7 @@ ${listText}
 _List otomatis terupdate_ ✅
 
 *CARA JOIN???*
-_ketik : .ptptlist ${sessionCode} (username) untuk join!_`;
+_ketik : .ptptlist ${sessionCode} (username) untuk join!_${PTPT_FOOTER}`;
 
             await message.reply(FINAL_TEMPLATE);
 
@@ -439,7 +445,7 @@ ${listText}
 _List otomatis terupdate_ ✅
 
 *CARA JOIN???*
-_ketik : .ptptlist ${targetCode} (username) untuk join!_`;
+_ketik : .ptptlist ${targetCode} (username) untuk join!_${PTPT_FOOTER}`;
                 
                 if (fs.existsSync('./ptpt_image.png')) {
                     await client.sendMessage(message.from, MessageMedia.fromFilePath('./ptpt_image.png'), { caption: DETAIL_TEMPLATE });
@@ -470,7 +476,6 @@ _ketik : .ptptlist ${targetCode} (username) untuk join!_`;
     }
 
     // --- AREA KHUSUS ADMIN ---
-    // PERBAIKAN: Menggunakan startsWith untuk .ptptreset agar bisa menangkap argumen
     if(msg === '.gigupdate' || msg === '.gigreset' || msg === '.boosterupdate' || msg === '.boosterreset' || msg === '.vilogupdate' || msg === '.vilogreset' || msg.startsWith('.ptptreset') || msg.startsWith('.ptptopen') || msg.startsWith('.ptptset') || msg.startsWith('.ptptremove') || msg.startsWith('.ptptpaid') || msg === '.testgreet' || msg.startsWith('.p ')) {
         
         if (!isUserAdmin(message)) {
@@ -699,7 +704,7 @@ Jangan lupa tanda koma (,) untuk memisahkan Jenis dan Waktu!`);
 USN Wa / USN rblox
 ${listText}
 *CARA JOIN ???*
-_ketik : .ptptlist ${sessionCode} (username) untuk join!_`;
+_ketik : .ptptlist ${sessionCode} (username) untuk join!_${PTPT_FOOTER}`;
 
                 let mentions = [];
                 for(let participant of chat.participants) {
@@ -815,7 +820,7 @@ ${listText}
 _Terima kasih yang sudah lunas!_ ✅
 
 *CARA JOIN ???*
-_ketik : .ptptlist ${sessionCode} (username) untuk join!_`;
+_ketik : .ptptlist ${sessionCode} (username) untuk join!_${PTPT_FOOTER}`;
 
                 let mentions = [];
                 for(let participant of chat.participants) {
@@ -872,7 +877,7 @@ _ketik : .ptptlist ${sessionCode} (username) untuk join!_`;
             } catch (error) { message.reply('❌ Gagal menghapus.'); }
         }
 
-        // 5. RESET/DELETE SESSION (FIXED)
+        // 5. RESET/DELETE SESSION
         if(msg.startsWith('.ptptreset')) {
             const rawBody = message.body.slice(10).trim();
             const sessionCode = rawBody.toUpperCase();
