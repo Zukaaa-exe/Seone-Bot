@@ -384,13 +384,7 @@ ${listText}
 _List otomatis terupdate_ ✅
 
 *CARA JOIN???*
-_ketik : .ptptlist ${sessionCode} (username) untuk join!_
-----------------------------
-Cara Bayar:
-Tag admin yang bersangkutan dan ketik *.pay* untuk memunculkan QRIS payment.
-
-Notes:
-Kirim bukti transfer di grup ini & jangan lupa tag adminnya ya 😙`;
+_ketik : .ptptlist ${sessionCode} (username) untuk join!_`;
 
             await message.reply(FINAL_TEMPLATE);
 
@@ -445,13 +439,7 @@ ${listText}
 _List otomatis terupdate_ ✅
 
 *CARA JOIN???*
-_ketik : .ptptlist ${targetCode} (username) untuk join!_
-----------------------------
-Cara Bayar:
-Tag admin yang bersangkutan dan ketik *.pay* untuk memunculkan QRIS payment.
-
-Notes:
-Kirim bukti transfer di grup ini & jangan lupa tag adminnya ya 😙`;
+_ketik : .ptptlist ${targetCode} (username) untuk join!_`;
                 
                 if (fs.existsSync('./ptpt_image.png')) {
                     await client.sendMessage(message.from, MessageMedia.fromFilePath('./ptpt_image.png'), { caption: DETAIL_TEMPLATE });
@@ -825,7 +813,7 @@ USN Wa / USN rblox
 ${listText}
 _Terima kasih yang sudah lunas!_ ✅
 
-*CARA JOIN???*
+*CARA JOIN ???*
 _ketik : .ptptlist ${sessionCode} (username) untuk join!_`;
 
                 let mentions = [];
@@ -883,7 +871,7 @@ _ketik : .ptptlist ${sessionCode} (username) untuk join!_`;
             } catch (error) { message.reply('❌ Gagal menghapus.'); }
         }
 
-        // 5. RESET/DELETE SESSION (FIX ROBUST)
+        // 5. RESET/DELETE SESSION (FIX ROBUST V53)
         if(msg.startsWith('.ptptreset')) {
             const rawBody = message.body.slice(10).trim();
             
@@ -894,7 +882,7 @@ _ketik : .ptptlist ${sessionCode} (username) untuk join!_`;
 
             const sessionCode = rawBody.toUpperCase();
 
-            // FIXED: Langsung try-catch tanpa pre-check fs.existsSync di luar
+            // FIXED: Langsung try-catch tanpa pre-check fs.existsSync di luar agar delete lebih pasti
             try {
                 if (sessionCode === 'ALL') {
                     if(fs.existsSync('./database_ptpt.json')) fs.unlinkSync('./database_ptpt.json');
