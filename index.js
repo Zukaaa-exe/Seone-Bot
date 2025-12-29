@@ -62,8 +62,8 @@ Bingung mau ngapain? Cek daftar command di bawah ini:
 ✤ *.PAY*
 ✤ *.GIG*
 ✤ *.BOOSTER*
-✤ *.VILOG* (Via Login + TnC) 
-✤ *.PTPTLIST [KODE] [USN]* (Daftar Sesi PTPT)
+✤ *.VILOG*      (Via Login + TnC) 
+✤ *.PTPTLIST  * (Daftar Sesi PTPT)
 ✤ *.PTPTUPDATE* (Cek Daftar Sesi Aktif)
 ✤ *.HELP*
 ✤ *.PING*`;
@@ -78,7 +78,7 @@ const HELP_ADMIN_ONLY = `
 ✤ *.VILOGRESET*
 ✤ *.PTPTOPEN* (Buka Sesi Baru)
 ✤ *.PTPTSET* (Edit Jam Sesi)
-✤ *.PTPTPAID* (Konfirmasi Bayar) 
+✤ *.PTPTPAID* (Konfirmasi Bayar) ✅
 ✤ *.PTPTREMOVE* (Hapus Member)
 ✤ *.PTPTRESET* (Tutup/Hapus Sesi)
 ✤ *.P (teks)*`;
@@ -871,43 +871,76 @@ _ketik : .ptptlist ${sessionCode} (username) untuk join!_`;
             } catch (error) { message.reply('❌ Gagal menghapus.'); }
         }
 
-        // 5. RESET/DELETE SESSION (LOGIKA DIPERBAIKI AGAR JALAN)
+        // 5. RESET/DELETE SESSION (FINAL FIX V55)
         if(msg.startsWith('.ptptreset')) {
             const rawBody = message.body.slice(10).trim();
-            
-            if (!rawBody) {
-                message.reply('⚠️ Masukkan Kode Sesi yg mau dihapus, atau "ALL" untuk hapus semua.');
+            const sessionCode = rawBody.toUpperCase();
+
+            // Cek Input Kosong
+            if (!sessionCode) {
+                message.reply('⚠️ Format salah! Ketik `.ptptreset all` (hapus semua) atau `.ptptreset [KODE]` (hapus satu).');
                 return;
             }
 
-            const sessionCode = rawBody.toUpperCase();
-
-            // FIXED: Langsung masuk try-catch tanpa cek fs.existsSync di luar agar tidak nyangkut
             try {
+                // OPSI 1: RESET ALL (HAPUS TOTAL)
                 if (sessionCode === 'ALL') {
-                    if(fs.existsSync('./database_ptpt.json')) fs.unlinkSync('./database_ptpt.json');
-                    if(fs.existsSync('./ptpt_image.png')) fs.unlinkSync('./ptpt_image.png');
-                    message.reply('✅ *SEMUA DATA SESI DIHAPUS BERSIH!*');
-                } else {
+                    let success = false;
+                    // Hapus Database JSON
+                    if (fs.existsSync('./database_ptpt.json')) {
+                        fs.unlinkSync('./database_ptpt.json');
+                        success = true;
+                    }
+                    // Hapus Gambar
+                    if (fs.existsSync('./ptpt_image.png')) {
+                        fs.unlinkSync('./ptpt_image.png');
+                    }
+                    
+                    if (success) {
+                        message.reply('✅ Sukses! Semua sesi PTPT telah dihapus bersih.');
+                    } else {
+                        message.reply('⚠️ Database sudah kosong, tidak ada yang perlu dihapus.');
+                    }
+                } 
+                // OPSI 2: RESET SPESIFIK (HAPUS KODE)
+                else {
                     if (!fs.existsSync('./database_ptpt.json')) {
-                        message.reply('⚠️ Database sudah kosong.');
+                        message.reply('⚠️ Gagal: Database kosong (Belum ada sesi).');
                         return;
                     }
 
-                    const rawData = fs.readFileSync('./database_ptpt.json', 'utf8');
-                    let allSessions = JSON.parse(rawData);
+                    // Baca File dengan Safety Check (Anti Corrupt)
+                    let allSessions = {};
+                    try {
+                        const rawData = fs.readFileSync('./database_ptpt.json', 'utf8');
+                        allSessions = JSON.parse(rawData);
+                    } catch (err) {
+                        // Jika JSON rusak, tawarkan reset all
+                        message.reply('⚠️ Error: Database rusak/corrupt. Harap lakukan *.ptptreset all* untuk memperbaikinya.');
+                        return;
+                    }
 
+                    // Cek Apakah Kodenya Ada?
                     if (allSessions[sessionCode]) {
-                        delete allSessions[sessionCode]; // Hapus sesi spesifik
-                        fs.writeFileSync('./database_ptpt.json', JSON.stringify(allSessions));
-                        message.reply(`✅ Sesi *${sessionCode}* berhasil dihapus.`);
+                        delete allSessions[sessionCode]; // Hapus key
+                        
+                        // Cek jika habis dihapus jadi kosong, hapus file sekalian biar bersih
+                        if (Object.keys(allSessions).length === 0) {
+                            fs.unlinkSync('./database_ptpt.json');
+                            if(fs.existsSync('./ptpt_image.png')) fs.unlinkSync('./ptpt_image.png');
+                            message.reply(`✅ Sesi *${sessionCode}* dihapus. Database kini kosong (file dihapus).`);
+                        } else {
+                            // Simpan sisa sesi
+                            fs.writeFileSync('./database_ptpt.json', JSON.stringify(allSessions));
+                            message.reply(`✅ Sesi *${sessionCode}* berhasil dihapus dari database.`);
+                        }
                     } else {
-                        message.reply(`❌ Sesi ${sessionCode} tidak ditemukan.`);
+                        message.reply(`❌ Gagal: Sesi dengan kode *${sessionCode}* tidak ditemukan.`);
                     }
                 }
-            } catch (error) { 
+            } catch (error) {
                 console.log('Reset Error:', error);
-                message.reply('❌ Gagal reset. Cek console.'); 
+                message.reply('❌ Terjadi error sistem saat reset. Cek console.');
             }
         }
     }
