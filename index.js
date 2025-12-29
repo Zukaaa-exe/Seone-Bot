@@ -16,7 +16,8 @@ const LIST_ADMIN = [
 ];
 
 // --- DATABASE PESAN ---
-const SEONE_MSG_BODY = `*SeoneStore.ID* ✅Murah, Aman & Trusted 100%
+const SEONE_MSG_BODY = `*SeoneStore.ID* 
+✅Murah, Aman & Trusted 100%
 
 ⚡ Proses Cepat (1-10 Menit)
 💳 Bayar via : Qris
@@ -31,7 +32,7 @@ Pembayaran hanya valid jika dilakukan melalui *QRIS resmi* ini.
 Transfer melalui DM, link pribadi, atau QR lain = otomatis *dianggap tidak sah.*
 Segala bentuk salah transfer *bukan tanggung jawab admin.*`;
 
-// --- SYARAT & KETENTUAN VILOG (REVISI V41) ---
+// --- SYARAT & KETENTUAN VILOG (REVISI BARU) ---
 const VILOG_TNC = `🔐 *INFORMASI LENGKAP VIA LOGIN (VILOG)* 🔐
 
 1️⃣ *CARA KERJA:*
@@ -48,7 +49,7 @@ const VILOG_TNC = `🔐 *INFORMASI LENGKAP VIA LOGIN (VILOG)* 🔐
 • Dengan melakukan pembayaran, berarti kamu *SETUJU* dengan semua prosedur di atas.
 
 4️⃣ *PENGIRIMAN DATA:*
-• Silakan kirim Username & Password *HANYA MELALUI DM* ke Admin yang bersangkutan.
+• Silakan kirim Username & Password *HANYA MELALUI DM/JAPRI* ke Admin yang bersangkutan secara langsung.
 • ❌ Jangan pernah kirim data akun di Grup!
 
 # *INGAT! ADMIN NEVER DM FIRST!* 🚫
@@ -74,7 +75,8 @@ const HELP_ADMIN_ONLY = `
 ✤ *.BOOSTERUPDATE* 
 ✤ *.BOOSTERRESET*
 ✤ *.VILOGUPDATE* (Coming Soon)
-✤ *.VILOGTEST* (Cek Tampilan Vilog) ✅
+✤ *.VILOGTEST* (Cek Tampilan Vilog)
+✤ *.VILOGRESET* (Hapus Data Vilog)
 ✤ *.PTPTOPEN* (Buka Sesi Baru)
 ✤ *.PTPTSET* (Edit Jam Sesi)
 ✤ *.PTPTPAID* (Konfirmasi Bayar) ✅
@@ -86,20 +88,19 @@ const HELP_FOOTER = `
 _SeoneStore.ID - Happy Shopping!_ 🔥`;
 
 
-// Settingan Bot
+// Settingan Bot (WAJIB TERMUX)
 const client = new Client({
     authStrategy: new LocalAuth(),
     puppeteer: {
-        // BARIS INI WAJIB UNTUK TERMUX:
         executablePath: '/data/data/com.termux/files/usr/bin/chromium-browser',
         args: [
             '--no-sandbox', 
             '--disable-setuid-sandbox',
-            '--disable-dev-shm-usage', // Tambahkan ini
-            '--disable-accelerated-2d-canvas', // Tambahkan ini
-            '--no-first-run', // Tambahkan ini
-            '--no-zygote', // Tambahkan ini
-            '--single-process' // Tambahkan ini untuk menghemat RAM HP
+            '--disable-dev-shm-usage',
+            '--disable-accelerated-2d-canvas',
+            '--no-first-run',
+            '--no-zygote',
+            '--single-process'
         ],
     }
 });
@@ -214,7 +215,7 @@ client.on('message', async (message) => {
 
 Ini gig pricelist terbaru sesuai tanggal dan waktu update admin.
 👇 *CARA PESAN:*
-Tag admin yang bersangkutan and ketik *.pay* untuk menampilkan QRIS payment yaaa.`;
+Tag admin yang bersangkutan dan ketik *.pay* untuk menampilkan QRIS payment yaaa.`;
 
         try {
             if (fs.existsSync('./pricelist.png')) {
@@ -241,7 +242,7 @@ Tag admin yang bersangkutan and ketik *.pay* untuk menampilkan QRIS payment yaaa
 
 Ini harga booster terbaru sesuai update admin.
 👇 *CARA PESAN:*
-Tag admin yang bersangkutan and ketik *.pay* untuk menampilkan QRIS payment yaaa.`;
+Tag admin yang bersangkutan dan ketik *.pay* untuk menampilkan QRIS payment yaaa.`;
 
         try {
             if (fs.existsSync('./pricelist_booster.png')) {
@@ -272,7 +273,7 @@ Tag admin yang bersangkutan and ketik *.pay* untuk menampilkan QRIS payment yaaa
 ${VILOG_TNC}
 
 👇 *CARA PESAN:*
-Tag admin yang bersangkutan and ketik *.pay* untuk menampilkan QRIS payment.`;
+Tag admin yang bersangkutan dan ketik *.pay* untuk menampilkan QRIS payment.`;
 
         try {
             if (fs.existsSync('./pricelist_vilog.png')) {
@@ -425,7 +426,7 @@ _List otomatis terupdate_ ✅`;
     }
 
     // --- AREA KHUSUS ADMIN ---
-    if(msg === '.gigupdate' || msg === '.gigreset' || msg === '.boosterupdate' || msg === '.boosterreset' || msg === '.vilogupdate' || msg === '.vilogtest' || msg === '.ptptreset' || msg.startsWith('.ptptopen') || msg.startsWith('.ptptset') || msg.startsWith('.ptptremove') || msg.startsWith('.ptptpaid') || msg === '.testgreet' || msg.startsWith('.p ')) {
+    if(msg === '.gigupdate' || msg === '.gigreset' || msg === '.boosterupdate' || msg === '.boosterreset' || msg === '.vilogupdate' || msg === '.vilogtest' || msg === '.vilogreset' || msg === '.ptptreset' || msg.startsWith('.ptptopen') || msg.startsWith('.ptptset') || msg.startsWith('.ptptremove') || msg.startsWith('.ptptpaid') || msg === '.testgreet' || msg.startsWith('.p ')) {
         
         if (!isUserAdmin(message)) {
             console.log(`[ALERT] Non-Admin tried to use admin command: ${msg}`);
@@ -545,11 +546,10 @@ _List otomatis terupdate_ ✅`;
 ${VILOG_TNC}
 
 👇 *CARA PESAN:*
-Tag admin yang bersangkutan and ketik *.pay* untuk menampilkan QRIS payment.`;
+Tag admin yang bersangkutan dan ketik *.pay* untuk menampilkan QRIS payment.`;
             
             try {
                 // Coba cek ada gambar pricelist_vilog.png atau tidak
-                // Kalau admin belum upload, dia bakal kirim text aja + peringatan
                 if (fs.existsSync('./pricelist_vilog.png')) {
                     const media = MessageMedia.fromFilePath('./pricelist_vilog.png');
                     await client.sendMessage(message.from, media, { caption: VILOG_TEMPLATE_TEST });
@@ -561,6 +561,18 @@ Tag admin yang bersangkutan and ketik *.pay* untuk menampilkan QRIS payment.`;
             } catch (error) {
                 console.log('Error Vilog Test:', error);
                 message.reply('❌ Gagal menjalankan test vilog.');
+            }
+        }
+
+        if(msg === '.vilogreset') {
+            try {
+                if(fs.existsSync('./database_vilog.json')) fs.unlinkSync('./database_vilog.json');
+                if(fs.existsSync('./pricelist_vilog.png')) fs.unlinkSync('./pricelist_vilog.png');
+                message.reply('✅ *SUKSES!* Data Vilog telah direset.');
+                console.log(`[ADMIN] VILOG Data RESET`);
+            } catch (error) { 
+                console.log('Error Vilog Reset:', error);
+                message.reply('❌ Gagal mereset data Vilog.'); 
             }
         }
 
