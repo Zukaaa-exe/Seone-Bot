@@ -78,7 +78,7 @@ const HELP_ADMIN_ONLY = `
 ✤ *.VILOGRESET*
 ✤ *.PTPTOPEN* (Buka Sesi Baru)
 ✤ *.PTPTSET* (Edit Jam Sesi)
-✤ *.PTPTPAID* (Konfirmasi Bayar) ✅
+✤ *.PTPTPAID* (Konfirmasi Bayar) 
 ✤ *.PTPTREMOVE* (Hapus Member)
 ✤ *.PTPTRESET* (Tutup/Hapus Sesi)
 ✤ *.P (teks)*`;
@@ -871,7 +871,7 @@ _ketik : .ptptlist ${sessionCode} (username) untuk join!_`;
             } catch (error) { message.reply('❌ Gagal menghapus.'); }
         }
 
-        // 5. RESET/DELETE SESSION (FIX ROBUST V53)
+        // 5. RESET/DELETE SESSION (LOGIKA DIPERBAIKI AGAR JALAN)
         if(msg.startsWith('.ptptreset')) {
             const rawBody = message.body.slice(10).trim();
             
@@ -882,7 +882,7 @@ _ketik : .ptptlist ${sessionCode} (username) untuk join!_`;
 
             const sessionCode = rawBody.toUpperCase();
 
-            // FIXED: Langsung try-catch tanpa pre-check fs.existsSync di luar agar delete lebih pasti
+            // FIXED: Langsung masuk try-catch tanpa cek fs.existsSync di luar agar tidak nyangkut
             try {
                 if (sessionCode === 'ALL') {
                     if(fs.existsSync('./database_ptpt.json')) fs.unlinkSync('./database_ptpt.json');
