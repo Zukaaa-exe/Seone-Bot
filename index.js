@@ -68,21 +68,25 @@ Bingung mau ngapain? Cek daftar command di bawah ini:
 ✤ *.PAY*
 ✤ *.GIG*
 ✤ *.BOOSTER*
-✤ *.VILOG*      (Via Login + TnC) 
-✤ *.PTPTLIST*   (Daftar Sesi PTPT)
-✤ *.PTPTUPDATE* (Cek Daftar Sesi Aktif)
+✤ *.VILOG*       (Via Login + TnC) 
+✤ *.PTPTLIST   * (Daftar Sesi PTPT)
+✤ *.PTPTUPDATE * (Cek Daftar Sesi Aktif)
 ✤ *.HELP*
 ✤ *.PING*`;
 
 const HELP_ADMIN_ONLY = `
 ---------ADMIN ONLY------------
 ✤ *.GIGUPDATE* 
-✤ *.GIGRESET*
+✤ *.GIGRESET* 
+✤ *.GIGCLOSE*
 ✤ *.BOOSTERUPDATE* 
-✤ *.BOOSTERRESET*
+✤ *.BOOSTERRESET* 
+✤ *.BOOSTERCLOSE*
 ✤ *.VILOGUPDATE* 
-✤ *.VILOGRESET*
-✤ *.PTPTOPEN* (Buka Sesi Baru)
+✤ *.VILOGRESET* 
+✤ *.VILOGCLOSE*
+✤ *.PTPTOPEN*  (Buka Sesi Baru)
+✤ *.PTPTCLOSE* (Tutup Sesi Biar Ga Ada yg Join)
 ✤ *.PTPTSET*  (Edit Jam Sesi)
 ✤ *.PTPTPAID* (Konfirmasi Bayar) ✅
 ✤ *.PTPTREMOVE* (Hapus Member)
@@ -202,18 +206,43 @@ client.on('message', async (message) => {
         } catch (error) { message.reply('Mohon maaf, gambar QRIS sedang bermasalah.'); }
     }
 
-    // FITUR GIG & BOOSTER & VILOG
+    // ==========================================
+    // FITUR GIG (View)
+    // ==========================================
     if(msg === '.gig') {
+        let isClosed = false;
         let displayDate = 'Belum ada update';
         let displayTime = '-';
+
         if (fs.existsSync('./database_update.json')) {
             try {
                 const rawData = fs.readFileSync('./database_update.json', 'utf8');
                 const lastUpdate = JSON.parse(rawData);
-                displayDate = lastUpdate.date;
-                displayTime = lastUpdate.time;
+                // Cek status close
+                if (lastUpdate.status === 'CLOSED') {
+                    isClosed = true;
+                    displayTime = lastUpdate.time; // Waktu saat diclose
+                } else {
+                    displayDate = lastUpdate.date;
+                    displayTime = lastUpdate.time;
+                }
             } catch (err) { }
         }
+
+        // Kalau statusnya CLOSED, kirim pesan ini
+        if (isClosed) {
+            const CLOSED_MSG = `🚫 *STOCK GIG KOSONG / TUTUP* 🚫
+
+Maaf ya, saat ini stock GIG lagi *HABIS* atau layanan sedang *TUTUP SEMENTARA*.
+Silakan coba lagi nanti atau tunggu info restock dari Admin ya!
+
+⏰ *Closed sejak:* ${displayTime} WIB
+_Jangan sedih ya, nanti kita kabarin lagi kok 😙_`;
+            message.reply(CLOSED_MSG);
+            return;
+        }
+
+        // Kalau OPEN, kirim Pricelist Normal
         const GIG_TEMPLATE = `🛒 *GIG PRICELIST TERBARU* 🛒
 🗓️ *Tanggal Update:* ${displayDate}
 🕛 *Pukul:* ${displayTime} WIB
@@ -233,17 +262,40 @@ Kirim bukti transfer di grup ini & jangan lupa tag adminnya ya 😙`;
         } catch (error) { message.reply('Error sistem.'); }
     }
 
+    // ==========================================
+    // FITUR BOOSTER (View)
+    // ==========================================
     if(msg === '.booster') {
+        let isClosed = false;
         let displayDate = 'Belum ada update';
         let displayTime = '-';
+
         if (fs.existsSync('./database_booster.json')) {
             try {
                 const rawData = fs.readFileSync('./database_booster.json', 'utf8');
                 const lastUpdate = JSON.parse(rawData);
-                displayDate = lastUpdate.date;
-                displayTime = lastUpdate.time;
+                if (lastUpdate.status === 'CLOSED') {
+                    isClosed = true;
+                    displayTime = lastUpdate.time;
+                } else {
+                    displayDate = lastUpdate.date;
+                    displayTime = lastUpdate.time;
+                }
             } catch (err) { }
         }
+
+        if (isClosed) {
+            const CLOSED_MSG = `🚫 *BOOSTER PENUH / CLOSED* 🚫
+
+Slot Booster saat ini sedang *PENUH* atau *TUTUP*.
+Admin lagi fokus ngerjain orderan yang numpuk nih, harap bersabar ya!
+
+⏰ *Closed sejak:* ${displayTime} WIB
+_Nanti kalau slot dibuka, pasti dikabarin!_ 🚀`;
+            message.reply(CLOSED_MSG);
+            return;
+        }
+
         const BOOSTER_TEMPLATE = `🚀 *BOOSTER PRICELIST TERBARU*
 🗓️ *Tanggal Update:* ${displayDate}
 🕛 *Pukul:* ${displayTime} WIB
@@ -263,17 +315,38 @@ Kirim bukti transfer di grup ini & jangan lupa tag adminnya ya 😙`;
         } catch (error) { message.reply('Error sistem.'); }
     }
 
-    // === FITUR VILOG (MEMBER) ===
+    // ==========================================
+    // FITUR VILOG (View)
+    // ==========================================
     if(msg === '.vilog') {
+        let isClosed = false;
         let displayDate = 'Belum ada update';
         let displayTime = '-';
+
         if (fs.existsSync('./database_vilog.json')) {
             try {
                 const rawData = fs.readFileSync('./database_vilog.json', 'utf8');
                 const lastUpdate = JSON.parse(rawData);
-                displayDate = lastUpdate.date;
-                displayTime = lastUpdate.time;
+                if (lastUpdate.status === 'CLOSED') {
+                    isClosed = true;
+                    displayTime = lastUpdate.time;
+                } else {
+                    displayDate = lastUpdate.date;
+                    displayTime = lastUpdate.time;
+                }
             } catch (err) { }
+        }
+
+        if (isClosed) {
+            const CLOSED_MSG = `🚫 *VILOG CLOSED / ANTRIAN PENUH* 🚫
+
+Layanan Via Login (Vilog) sedang *DITUTUP SEMENTARA*.
+Mungkin antrian lagi panjang atau Admin lagi istirahat.
+
+⏰ *Closed sejak:* ${displayTime} WIB
+_Mohon pengertiannya ya guys!_ 🔐`;
+            message.reply(CLOSED_MSG);
+            return;
         }
         
         // Template Vilog dengan TnC Lengkap untuk Member
@@ -297,7 +370,9 @@ Kirim bukti transfer di grup ini & jangan lupa tag adminnya ya 😙`;
         } catch (error) { message.reply('Error sistem.'); }
     }
 
-    // === FITUR PTPT LIST (MEMBER) ===
+    // ==========================================
+    // FITUR PTPT LIST (MEMBER)
+    // ==========================================
     if (msg.startsWith('.ptptlist')) {
         let robloxUser = message.body.slice(10).trim();
         
@@ -329,12 +404,18 @@ Kirim bukti transfer di grup ini & jangan lupa tag adminnya ya 😙`;
                       return;
                 }
             } else {
-                // Jika format lama/langsung user (untuk single session, atau user bingung)
+                // Jika format lama/langsung user
                 message.reply('⚠️ *Sesi tidak ditemukan atau Format Salah!* \nHarap sertakan Kode Sesi.\nContoh: `.ptptlist 24H Username`\n\nCek daftar sesi aktif dengan: `.ptptupdate`');
                 return;
             }
 
             let currentSession = allSessions[sessionCode];
+
+            // --- CEK APAKAH SESI SUDAH DITUTUP (CLOSED) ---
+            if (currentSession.isClosed) {
+                message.reply(`❌ *SESI DITUTUP* ❌\n\nYah, sesi *${sessionCode}* sudah ditutup manual oleh Admin.\nGabisa join lagi ya, coba ikut sesi berikutnya! 👋`);
+                return;
+            }
 
             // 2. Cek Slot Penuh
             if (currentSession.participants.length >= 20) {
@@ -434,10 +515,18 @@ _ketik : .ptptlist ${sessionCode} (username) untuk join!_${PTPT_FOOTER}`;
                     }
                 }
 
+                // Cek status Closed untuk tampilan
+                let statusText = `OPEN (${currentSession.participants.length}/20)`;
+                if (currentSession.isClosed) {
+                    statusText = `CLOSED (DITUTUP ADMIN)`;
+                } else if (currentSession.participants.length >= 20) {
+                    statusText = `FULL (20/20)`;
+                }
+
                 const DETAIL_TEMPLATE = `📢 SESSION INFO (${targetCode})
 • Jenis: ${currentSession.sessionType}
 • Waktu: ${currentSession.timeInfo}
-• Status: OPEN (${currentSession.participants.length}/20)
+• Status: ${statusText}
 
 --------LIST MEMBER---------
 USN Wa / USN rblox
@@ -459,7 +548,9 @@ _ketik : .ptptlist ${targetCode} (username) untuk join!_${PTPT_FOOTER}`;
                 
                 sessionKeys.forEach(code => {
                     const s = allSessions[code];
-                    summaryText += `🔹 *KODE: ${code}* (${s.sessionType})\n`;
+                    let statusLabel = s.isClosed ? "[CLOSED] ❌" : (s.participants.length >= 20 ? "[FULL]" : "[OPEN]");
+                    
+                    summaryText += `🔹 *KODE: ${code}* (${s.sessionType}) ${statusLabel}\n`;
                     summaryText += `   📅 Waktu: ${s.timeInfo}\n`;
                     summaryText += `   👥 Slot: ${s.participants.length}/20 Terisi\n`;
                     summaryText += `   👉 Ketik: *.ptptlist ${code} [Username]*\n\n`;
@@ -476,7 +567,10 @@ _ketik : .ptptlist ${targetCode} (username) untuk join!_${PTPT_FOOTER}`;
     }
 
     // --- AREA KHUSUS ADMIN ---
-    if(msg === '.gigupdate' || msg === '.gigreset' || msg === '.boosterupdate' || msg === '.boosterreset' || msg === '.vilogupdate' || msg === '.vilogreset' || msg.startsWith('.ptptreset') || msg.startsWith('.ptptopen') || msg.startsWith('.ptptset') || msg.startsWith('.ptptremove') || msg.startsWith('.ptptpaid') || msg === '.testgreet' || msg.startsWith('.p ')) {
+    if(msg === '.gigupdate' || msg === '.gigreset' || msg === '.gigclose' || 
+       msg === '.boosterupdate' || msg === '.boosterreset' || msg === '.boosterclose' || 
+       msg === '.vilogupdate' || msg === '.vilogreset' || msg === '.vilogclose' ||
+       msg.startsWith('.ptptreset') || msg.startsWith('.ptptopen') || msg.startsWith('.ptptclose') || msg.startsWith('.ptptset') || msg.startsWith('.ptptremove') || msg.startsWith('.ptptpaid') || msg === '.testgreet' || msg.startsWith('.p ')) {
         
         if (!isUserAdmin(message)) {
             console.log(`[ALERT] Non-Admin tried to use admin command: ${msg}`);
@@ -515,11 +609,14 @@ _ketik : .ptptlist ${targetCode} (username) untuk join!_${PTPT_FOOTER}`;
             } catch (error) {}
         }
 
-        // --- GIG & BOOSTER & VILOG (ADMIN) ---
+        // ==========================================
+        // GIG ADMIN (UPDATE, RESET, CLOSE)
+        // ==========================================
         if(msg === '.gigupdate') {
              const chat = await message.getChat();
              const { date, time } = getWaktuIndonesia();
-             fs.writeFileSync('./database_update.json', JSON.stringify({ date, time }));
+             // Reset status 'CLOSED' jadi 'OPEN' secara implisit dengan menyimpan data baru
+             fs.writeFileSync('./database_update.json', JSON.stringify({ date, time, status: 'OPEN' }));
              if (message.hasMedia) {
                 const media = await message.downloadMedia();
                 if(media) fs.writeFileSync('./pricelist.png', media.data, 'base64');
@@ -527,13 +624,19 @@ _ketik : .ptptlist ${targetCode} (username) untuk join!_${PTPT_FOOTER}`;
              let mentions = [];
              for(let p of chat.participants) { try{mentions.push(await client.getContactById(p.id._serialized))}catch(e){} }
              
-             // --- TEMPLATE SERAGAM GIG (WITH NOTE) ---
              const TPL = `📢 *GIG STOCK UPDATE!* 📢\n🗓️ ${date} | 🕛 ${time} WIB\n\n🔥 *READY STOCK!*\n\n👇 *CARA PESAN:*\nTag admin yang bersangkutan dan ketik *.pay* untuk memunculkan QRIS payment.\n\n📝 *NOTE:*\nKirim bukti transfer di grup ini & jangan lupa tag adminnya ya 😙`;
              
              if(fs.existsSync('./pricelist.png')) {
                  await chat.sendMessage(MessageMedia.fromFilePath('./pricelist.png'), { caption: TPL, mentions: mentions });
              } else { await chat.sendMessage(TPL, { mentions: mentions }); }
              console.log(`[ADMIN] GIG Updated by Admin`);
+        }
+
+        if(msg === '.gigclose') {
+            const { date, time } = getWaktuIndonesia();
+            // Simpan status CLOSED
+            fs.writeFileSync('./database_update.json', JSON.stringify({ date, time, status: 'CLOSED' }));
+            message.reply('⛔ *GIG CLOSED!* Status GIG sekarang: HABIS/TUTUP. Member akan melihat pesan stok habis.');
         }
 
         if(msg === '.gigreset') {
@@ -543,17 +646,18 @@ _ketik : .ptptlist ${targetCode} (username) untuk join!_${PTPT_FOOTER}`;
                 if(fs.existsSync('./pricelist.png')) fs.unlinkSync('./pricelist.png');
                 
                 message.reply('✅ *SUKSES!* Data GIG telah direset. (Member akan melihat "Belum ada update")');
-                console.log(`[ADMIN] GIG Data RESET`);
             } catch (error) {
-                console.log('Error Gig Reset:', error);
                 message.reply('❌ Gagal mereset data GIG.');
             }
         }
 
+        // ==========================================
+        // BOOSTER ADMIN (UPDATE, RESET, CLOSE)
+        // ==========================================
         if(msg === '.boosterupdate') {
              const chat = await message.getChat();
              const { date, time } = getWaktuIndonesia();
-             fs.writeFileSync('./database_booster.json', JSON.stringify({ date, time }));
+             fs.writeFileSync('./database_booster.json', JSON.stringify({ date, time, status: 'OPEN' }));
              if (message.hasMedia) {
                 const media = await message.downloadMedia();
                 if(media) fs.writeFileSync('./pricelist_booster.png', media.data, 'base64');
@@ -561,7 +665,6 @@ _ketik : .ptptlist ${targetCode} (username) untuk join!_${PTPT_FOOTER}`;
              let mentions = [];
              for(let p of chat.participants) { try{mentions.push(await client.getContactById(p.id._serialized))}catch(e){} }
              
-             // --- TEMPLATE SERAGAM BOOSTER (WITH NOTE) ---
              const TPL = `📢 *BOOSTER UPDATE!* 📢\n🗓️ ${date} | 🕛 ${time} WIB\n\n🔥 *OPEN SLOT!*\n\n👇 *CARA PESAN:*\nTag admin yang bersangkutan dan ketik *.pay* untuk memunculkan QRIS payment.\n\n📝 *NOTE:*\nKirim bukti transfer di grup ini & jangan lupa tag adminnya ya 😙`;
              
              if(fs.existsSync('./pricelist_booster.png')) {
@@ -570,25 +673,30 @@ _ketik : .ptptlist ${targetCode} (username) untuk join!_${PTPT_FOOTER}`;
              console.log(`[ADMIN] Booster Updated by Admin`);
         }
 
+        if(msg === '.boosterclose') {
+            const { date, time } = getWaktuIndonesia();
+            fs.writeFileSync('./database_booster.json', JSON.stringify({ date, time, status: 'CLOSED' }));
+            message.reply('⛔ *BOOSTER CLOSED!* Status sekarang: HABIS/TUTUP.');
+        }
+
         if(msg === '.boosterreset') {
             message.reply('⏳ _Menghapus data update BOOSTER..._');
             try {
                 if(fs.existsSync('./database_booster.json')) fs.unlinkSync('./database_booster.json');
                 if(fs.existsSync('./pricelist_booster.png')) fs.unlinkSync('./pricelist_booster.png');
-                
-                message.reply('✅ *SUKSES!* Data Booster telah direset. (Member akan melihat "Belum ada update")');
-                console.log(`[ADMIN] BOOSTER Data RESET`);
+                message.reply('✅ *SUKSES!* Data Booster telah direset.');
             } catch (error) {
-                console.log('Error Booster Reset:', error);
                 message.reply('❌ Gagal mereset data Booster.');
             }
         }
 
-        // --- VILOG UPDATE (ADMIN - SERAGAM) ---
+        // ==========================================
+        // VILOG ADMIN (UPDATE, RESET, CLOSE)
+        // ==========================================
         if(msg === '.vilogupdate') {
              const chat = await message.getChat();
              const { date, time } = getWaktuIndonesia();
-             fs.writeFileSync('./database_vilog.json', JSON.stringify({ date, time }));
+             fs.writeFileSync('./database_vilog.json', JSON.stringify({ date, time, status: 'OPEN' }));
              if (message.hasMedia) {
                 const media = await message.downloadMedia();
                 if(media) fs.writeFileSync('./pricelist_vilog.png', media.data, 'base64');
@@ -596,7 +704,6 @@ _ketik : .ptptlist ${targetCode} (username) untuk join!_${PTPT_FOOTER}`;
              let mentions = [];
              for(let p of chat.participants) { try{mentions.push(await client.getContactById(p.id._serialized))}catch(e){} }
              
-             // --- TEMPLATE SERAGAM VILOG (WITH NOTE) ---
              const TPL = `📢 *VIA LOGIN (JOKI) UPDATE!* 📢\n🗓️ ${date} | 🕛 ${time} WIB\n\n🔥 *OPEN ORDER!*\n\n👇 *CARA PESAN:*\nTag admin yang bersangkutan dan ketik *.pay* untuk memunculkan QRIS payment.\n\n📝 *NOTE:*\nKirim bukti transfer di grup ini & jangan lupa tag adminnya ya 😙`;
              
              if(fs.existsSync('./pricelist_vilog.png')) {
@@ -607,14 +714,18 @@ _ketik : .ptptlist ${targetCode} (username) untuk join!_${PTPT_FOOTER}`;
              console.log(`[ADMIN] VILOG Updated by Admin (Broadcast)`);
         }
 
+        if(msg === '.vilogclose') {
+            const { date, time } = getWaktuIndonesia();
+            fs.writeFileSync('./database_vilog.json', JSON.stringify({ date, time, status: 'CLOSED' }));
+            message.reply('⛔ *VILOG CLOSED!* Status sekarang: HABIS/TUTUP.');
+        }
+
         if(msg === '.vilogreset') {
             try {
                 if(fs.existsSync('./database_vilog.json')) fs.unlinkSync('./database_vilog.json');
                 if(fs.existsSync('./pricelist_vilog.png')) fs.unlinkSync('./pricelist_vilog.png');
                 message.reply('✅ *SUKSES!* Data Vilog telah direset.');
-                console.log(`[ADMIN] VILOG Data RESET`);
             } catch (error) { 
-                console.log('Error Vilog Reset:', error);
                 message.reply('❌ Gagal mereset data Vilog.'); 
             }
         }
@@ -681,6 +792,7 @@ Jangan lupa tanda koma (,) untuk memisahkan Jenis dan Waktu!`);
                 allSessions[sessionCode] = {
                     sessionType: sessionType,
                     timeInfo: timeInfo,
+                    isClosed: false, // Default: OPEN
                     participants: []
                 };
 
@@ -722,6 +834,36 @@ _ketik : .ptptlist ${sessionCode} (username) untuk join!_${PTPT_FOOTER}`;
                 console.log('Error PTPT Open:', error);
                 message.reply('❌ Gagal membuka sesi PTPT.');
             }
+        }
+
+        // 1.5 CLOSE SESI (NEW!)
+        if(msg.startsWith('.ptptclose')) {
+            const rawBody = message.body.slice(10).trim();
+            const sessionCode = rawBody.toUpperCase();
+
+            if (!sessionCode) {
+                message.reply('⚠️ Format: `.ptptclose [KODE]`\nContoh: `.ptptclose 24H`');
+                return;
+            }
+
+            if (!fs.existsSync('./database_ptpt.json')) return;
+
+            try {
+                const rawData = fs.readFileSync('./database_ptpt.json', 'utf8');
+                let allSessions = JSON.parse(rawData);
+
+                if (!allSessions[sessionCode]) {
+                    message.reply(`❌ Sesi ${sessionCode} tidak ditemukan.`);
+                    return;
+                }
+
+                // Set status closed
+                allSessions[sessionCode].isClosed = true;
+                
+                fs.writeFileSync('./database_ptpt.json', JSON.stringify(allSessions));
+                message.reply(`⛔ Sesi *${sessionCode}* berhasil DITUTUP. Member tidak bisa join lagi.`);
+
+            } catch (error) { message.reply('❌ Gagal menutup sesi.'); }
         }
 
         // 2. SET/EDIT SESI
