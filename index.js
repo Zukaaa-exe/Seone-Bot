@@ -32,11 +32,10 @@ Pembayaran hanya valid jika dilakukan melalui *QRIS resmi* ini.
 Transfer melalui DM, link pribadi, atau QR lain = otomatis *dianggap tidak sah.*
 Segala bentuk salah transfer *bukan tanggung jawab admin.*`;
 
-// --- [BARU] NOTE CARA PESAN (GLOBAL) ---
+// --- [GLOBAL] NOTE CARA PESAN ---
 const ORDER_NOTE = `
 *CARA PESAN:*
 Tag admin yang bersangkutan dan ketik *.pay* untuk memunculkan QRIS payment.
-
 *NOTE:*
 Kirim bukti transfer di grup ini & jangan lupa tag adminnya ya 😙`;
 
@@ -204,7 +203,7 @@ client.on('message', async (message) => {
         } catch (error) { message.reply('Mohon maaf, gambar QRIS sedang bermasalah.'); }
     }
 
-    // FITUR GIG
+    // FITUR GIG & BOOSTER & VILOG
     if(msg === '.gig') {
         let displayDate = 'Belum ada update';
         let displayTime = '-';
@@ -216,8 +215,11 @@ client.on('message', async (message) => {
                 displayTime = lastUpdate.time;
             } catch (err) { }
         }
-        // [UPDATE] Pakai ORDER_NOTE global
-        const GIG_TEMPLATE = `🛒 *GIG PRICELIST TERBARU* 🛒\n🗓️ *Tanggal Update:* ${displayDate}\n🕛 *Pukul:* ${displayTime} WIB\n\nIni gig pricelist terbaru sesuai tanggal dan waktu update admin.${ORDER_NOTE}`;
+        const GIG_TEMPLATE = `🛒 *GIG PRICELIST TERBARU* 🛒
+🗓️ *Tanggal Update:* ${displayDate}
+🕛 *Pukul:* ${displayTime} WIB
+
+Ini gig pricelist terbaru sesuai tanggal dan waktu update admin.${ORDER_NOTE}`;
 
         try {
             if (fs.existsSync('./pricelist.png')) {
@@ -227,7 +229,6 @@ client.on('message', async (message) => {
         } catch (error) { message.reply('Error sistem.'); }
     }
 
-    // FITUR BOOSTER
     if(msg === '.booster') {
         let displayDate = 'Belum ada update';
         let displayTime = '-';
@@ -239,8 +240,11 @@ client.on('message', async (message) => {
                 displayTime = lastUpdate.time;
             } catch (err) { }
         }
-        // [UPDATE] Pakai ORDER_NOTE global
-        const BOOSTER_TEMPLATE = `🚀 *BOOSTER PRICELIST TERBARU*\n🗓️ *Tanggal Update:* ${displayDate}\n🕛 *Pukul:* ${displayTime} WIB\n\nIni harga booster terbaru sesuai update admin.${ORDER_NOTE}`;
+        const BOOSTER_TEMPLATE = `🚀 *BOOSTER PRICELIST TERBARU*
+🗓️ *Tanggal Update:* ${displayDate}
+🕛 *Pukul:* ${displayTime} WIB
+
+Ini harga booster terbaru sesuai update admin.${ORDER_NOTE}`;
 
         try {
             if (fs.existsSync('./pricelist_booster.png')) {
@@ -250,7 +254,7 @@ client.on('message', async (message) => {
         } catch (error) { message.reply('Error sistem.'); }
     }
 
-    // FITUR VILOG
+    // === FITUR VILOG (MEMBER) ===
     if(msg === '.vilog') {
         let displayDate = 'Belum ada update';
         let displayTime = '-';
@@ -263,8 +267,11 @@ client.on('message', async (message) => {
             } catch (err) { }
         }
         
-        // [UPDATE] Pakai ORDER_NOTE global
-        const VILOG_TEMPLATE = `🔐 *VIA LOGIN PRICELIST* 🔐\n🗓️ *Tanggal Update:* ${displayDate}\n🕛 *Pukul:* ${displayTime} WIB\n\n${VILOG_TNC}${ORDER_NOTE}`;
+        const VILOG_TEMPLATE = `🔐 *VIA LOGIN PRICELIST* 🔐
+🗓️ *Tanggal Update:* ${displayDate}
+🕛 *Pukul:* ${displayTime} WIB
+
+${VILOG_TNC}${ORDER_NOTE}`;
 
         try {
             if (fs.existsSync('./pricelist_vilog.png')) {
@@ -306,6 +313,7 @@ client.on('message', async (message) => {
                      return;
                 }
             } else {
+                // Jika format lama/langsung user (untuk single session, atau user bingung)
                 message.reply('⚠️ *Sesi tidak ditemukan atau Format Salah!* \nHarap sertakan Kode Sesi.\nContoh: `.ptptlist 24H Username`\n\nCek daftar sesi aktif dengan: `.ptptupdate`');
                 return;
             }
@@ -330,7 +338,7 @@ client.on('message', async (message) => {
             const waName = contact.pushname || contact.number;
             const waNumber = contact.id._serialized;
 
-            // 4. Masukkan Data
+            // 4. Masukkan Data (Multi-slot Allowed per WA)
             currentSession.participants.push({
                 name: waName,
                 roblox: actualUser,
@@ -355,7 +363,7 @@ client.on('message', async (message) => {
                 }
             }
 
-            // [UPDATE] TUTORIAL JOIN DI FOOTER
+            // [UPDATE] TUTORIAL JOIN WITH HEADER
             const FINAL_TEMPLATE = `📢 SESSION INFO (${sessionCode})
 • Jenis: ${currentSession.sessionType}
 • Waktu: ${currentSession.timeInfo}
@@ -365,8 +373,9 @@ client.on('message', async (message) => {
 USN Wa / USN rblox
 ${listText}
 _List otomatis terupdate_ ✅
-❓*Cara Join?*
-*_ketik : .ptptlist ${sessionCode} (username) untuk join!_*
+
+*❓Cara Join???*
+_ketik : .ptptlist ${sessionCode} (username) untuk join!_
 ${ORDER_NOTE}`;
 
             await message.reply(FINAL_TEMPLATE);
@@ -397,7 +406,7 @@ ${ORDER_NOTE}`;
                 return;
             }
 
-            // A. KODE SPESIFIK -> Tampilkan List Detail
+            // A. Jika user mengetik KODE SPESIFIK -> Tampilkan List Detail
             if (targetCode && allSessions[targetCode]) {
                 let currentSession = allSessions[targetCode];
                 let listText = '';
@@ -411,7 +420,7 @@ ${ORDER_NOTE}`;
                     }
                 }
 
-                // [UPDATE] TUTORIAL JOIN DI FOOTER
+                // [UPDATE] TUTORIAL JOIN WITH HEADER
                 const DETAIL_TEMPLATE = `📢 SESSION INFO (${targetCode})
 • Jenis: ${currentSession.sessionType}
 • Waktu: ${currentSession.timeInfo}
@@ -422,6 +431,7 @@ USN Wa / USN rblox
 ${listText}
 _List otomatis terupdate_ ✅
 
+*❓Cara Join???*
 _ketik : .ptptlist ${targetCode} (username) untuk join!_
 ${ORDER_NOTE}`;
                 
@@ -432,7 +442,7 @@ ${ORDER_NOTE}`;
                 }
 
             } else {
-                // B. RINGKASAN SEMUA SESI
+                // B. Jika user HANYA mengetik .ptptupdate -> Tampilkan Ringkasan Semua Sesi
                 let summaryText = `📋 *DAFTAR SESI AKTIF SAAT INI:*\n\n`;
                 
                 sessionKeys.forEach(code => {
@@ -493,7 +503,7 @@ ${ORDER_NOTE}`;
             } catch (error) {}
         }
 
-        // --- ADMIN UPDATES ---
+        // --- GIG & BOOSTER & VILOG (ADMIN) ---
         if(msg === '.gigupdate') {
              const chat = await message.getChat();
              const { date, time } = getWaktuIndonesia();
@@ -505,7 +515,7 @@ ${ORDER_NOTE}`;
              let mentions = [];
              for(let p of chat.participants) { try{mentions.push(await client.getContactById(p.id._serialized))}catch(e){} }
              
-             // [UPDATE] Pakai ORDER_NOTE global
+             // --- TEMPLATE SERAGAM GIG (WITH NOTE) ---
              const TPL = `📢 *GIG STOCK UPDATE!* 📢\n🗓️ ${date} | 🕛 ${time} WIB\n\n🔥 *READY STOCK!*${ORDER_NOTE}`;
              
              if(fs.existsSync('./pricelist.png')) {
@@ -539,7 +549,7 @@ ${ORDER_NOTE}`;
              let mentions = [];
              for(let p of chat.participants) { try{mentions.push(await client.getContactById(p.id._serialized))}catch(e){} }
              
-             // [UPDATE] Pakai ORDER_NOTE global
+             // --- TEMPLATE SERAGAM BOOSTER (WITH NOTE) ---
              const TPL = `📢 *BOOSTER UPDATE!* 📢\n🗓️ ${date} | 🕛 ${time} WIB\n\n🔥 *OPEN SLOT!*${ORDER_NOTE}`;
              
              if(fs.existsSync('./pricelist_booster.png')) {
@@ -562,6 +572,7 @@ ${ORDER_NOTE}`;
             }
         }
 
+        // --- VILOG UPDATE (ADMIN - SERAGAM) ---
         if(msg === '.vilogupdate') {
              const chat = await message.getChat();
              const { date, time } = getWaktuIndonesia();
@@ -573,7 +584,7 @@ ${ORDER_NOTE}`;
              let mentions = [];
              for(let p of chat.participants) { try{mentions.push(await client.getContactById(p.id._serialized))}catch(e){} }
              
-             // [UPDATE] Pakai ORDER_NOTE global
+             // --- TEMPLATE SERAGAM VILOG (WITH NOTE) ---
              const TPL = `📢 *VIA LOGIN (JOKI) UPDATE!* 📢\n🗓️ ${date} | 🕛 ${time} WIB\n\n🔥 *OPEN ORDER!*${ORDER_NOTE}`;
              
              if(fs.existsSync('./pricelist_vilog.png')) {
@@ -605,8 +616,28 @@ ${ORDER_NOTE}`;
             const rawBody = message.body.slice(9).trim(); 
             const firstSpace = rawBody.indexOf(' ');
             
+            // CHECK & OUTPUT TUTORIAL (REVISI V45)
             if (firstSpace === -1) {
-                message.reply(`⚠️ *PANDUAN MEMBUKA SESI PTPT* ⚠️\n\n📝 *FORMAT COMMAND:*\n.ptptopen [KODE] [JENIS SESI], [INFO WAKTU]\n\n✅ *CONTOH:*\n.ptptopen 24H 12 Jam, 30 Des 20.00 - 08.00 WIB\n\n⚠️ *PENTING:*\nJangan lupa tanda koma (,) untuk memisahkan Jenis dan Waktu!`);
+                message.reply(`⚠️ *PANDUAN MEMBUKA SESI PTPT* ⚠️
+
+Untuk membuka sesi baru, gunakan format berikut dengan teliti:
+
+📝 *FORMAT COMMAND:*
+.ptptopen [KODE] [JENIS SESI], [INFO WAKTU]
+
+📌 *KETERANGAN:*
+• *KODE*: Identitas unik sesi (Contoh: 24H, 9H, VIP).
+• *JENIS*: Durasi atau tipe sesi (Contoh: 12 Jam, 6 Jam).
+• *WAKTU*: Jadwal mulai dan selesai.
+
+✅ *CONTOH 1 (Jadwal Fix):*
+.ptptopen 24H 12 Jam, 30 Des 20.00 - 08.00 WIB
+
+✅ *CONTOH 2 (Jadwal TBA):*
+.ptptopen 9H 6 Jam, TBA (Menunggu Info)
+
+⚠️ *PENTING:*
+Jangan lupa tanda koma (,) untuk memisahkan Jenis dan Waktu!`);
                 return;
             }
 
@@ -652,7 +683,7 @@ ${ORDER_NOTE}`;
                 let listText = '';
                 for (let i = 1; i <= 20; i++) listText += `${i}.\n`;
 
-                // [UPDATE] TUTORIAL JOIN DI FOOTER
+                // [UPDATE] TUTORIAL JOIN WITH HEADER
                 const PTPT_TEMPLATE = `📢 SESSION INFO OPEN (${sessionCode})
 • Jenis: ${sessionType}
 • Waktu: ${timeInfo}
@@ -661,6 +692,7 @@ ${ORDER_NOTE}`;
 --------LIST MEMBER---------
 USN Wa / USN rblox
 ${listText}
+*❓Cara Join???*
 _ketik : .ptptlist ${sessionCode} (username) untuk join!_`;
 
                 let mentions = [];
@@ -767,7 +799,7 @@ _ketik : .ptptlist ${sessionCode} (username) untuk join!_`;
                     }
                 }
 
-                // [UPDATE] TUTORIAL JOIN DI FOOTER
+                // [UPDATE] TUTORIAL JOIN WITH HEADER
                 const PTPT_TEMPLATE = `📢 *PAYMENT CONFIRMED (${sessionCode})*
 • Jenis: ${currentSession.sessionType}
 • Waktu: ${currentSession.timeInfo}
@@ -777,6 +809,7 @@ USN Wa / USN rblox
 ${listText}
 _Terima kasih yang sudah lunas!_ ✅
 
+*❓Cara Join???*
 _ketik : .ptptlist ${sessionCode} (username) untuk join!_`;
 
                 let mentions = [];
