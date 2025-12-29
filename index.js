@@ -16,8 +16,7 @@ const LIST_ADMIN = [
 ];
 
 // --- DATABASE PESAN ---
-const SEONE_MSG_BODY = `*SeoneStore.ID* 
-✅Murah, Aman & Trusted 100%
+const SEONE_MSG_BODY = `*SeoneStore.ID* ✅Murah, Aman & Trusted 100%
 
 ⚡ Proses Cepat (1-10 Menit)
 💳 Bayar via : Qris
@@ -32,7 +31,7 @@ Pembayaran hanya valid jika dilakukan melalui *QRIS resmi* ini.
 Transfer melalui DM, link pribadi, atau QR lain = otomatis *dianggap tidak sah.*
 Segala bentuk salah transfer *bukan tanggung jawab admin.*`;
 
-// --- SYARAT & KETENTUAN VILOG (REVISI V37) ---
+// --- SYARAT & KETENTUAN VILOG (REVISI V41) ---
 const VILOG_TNC = `🔐 *INFORMASI LENGKAP VIA LOGIN (VILOG)* 🔐
 
 1️⃣ *CARA KERJA:*
@@ -215,7 +214,7 @@ client.on('message', async (message) => {
 
 Ini gig pricelist terbaru sesuai tanggal dan waktu update admin.
 👇 *CARA PESAN:*
-Tag admin yang bersangkutan dan ketik *.pay* untuk menampilkan QRIS payment yaaa.`;
+Tag admin yang bersangkutan and ketik *.pay* untuk menampilkan QRIS payment yaaa.`;
 
         try {
             if (fs.existsSync('./pricelist.png')) {
@@ -242,7 +241,7 @@ Tag admin yang bersangkutan dan ketik *.pay* untuk menampilkan QRIS payment yaaa
 
 Ini harga booster terbaru sesuai update admin.
 👇 *CARA PESAN:*
-Tag admin yang bersangkutan dan ketik *.pay* untuk menampilkan QRIS payment yaaa.`;
+Tag admin yang bersangkutan and ketik *.pay* untuk menampilkan QRIS payment yaaa.`;
 
         try {
             if (fs.existsSync('./pricelist_booster.png')) {
@@ -273,7 +272,7 @@ Tag admin yang bersangkutan dan ketik *.pay* untuk menampilkan QRIS payment yaaa
 ${VILOG_TNC}
 
 👇 *CARA PESAN:*
-Tag admin yang bersangkutan dan ketik *.pay* untuk menampilkan QRIS payment.`;
+Tag admin yang bersangkutan and ketik *.pay* untuk menampilkan QRIS payment.`;
 
         try {
             if (fs.existsSync('./pricelist_vilog.png')) {
@@ -546,7 +545,7 @@ _List otomatis terupdate_ ✅`;
 ${VILOG_TNC}
 
 👇 *CARA PESAN:*
-Tag admin yang bersangkutan dan ketik *.pay* untuk menampilkan QRIS payment.`;
+Tag admin yang bersangkutan and ketik *.pay* untuk menampilkan QRIS payment.`;
             
             try {
                 // Coba cek ada gambar pricelist_vilog.png atau tidak
