@@ -34,10 +34,9 @@ Segala bentuk salah transfer *bukan tanggung jawab admin.*`;
 
 // --- [GLOBAL] NOTE CARA PESAN ---
 const ORDER_NOTE = `
-*CARA BAYAR:*
-ketik *.pay* untuk memunculkan QRIS payment.
-*NOTE:*
-Kirim bukti transfer di grup ini & jangan lupa tag adminnya ya 😙`;
+CARA BAYAR: ketik *.pay* untuk memunculkan QRIS payment.
+
+NOTE: Kirim bukti transfer di grup ini & jangan lupa tag adminnya ya 😙`;
 
 // --- SYARAT & KETENTUAN VILOG (MEMBER VIEW) ---
 const VILOG_TNC = `🔐 *INFORMASI LENGKAP VIA LOGIN (VILOG)* 🔐
