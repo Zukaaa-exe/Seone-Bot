@@ -191,7 +191,7 @@ client.on('message', async (message) => {
 
     if(msg === '.pay') {
         try {
-            const media = MessageMedia.fromFilePath('./qris.png');
+            const media = MessageMedia.fromFilePath('./QRIS.png');
             await client.sendMessage(message.from, media, { caption: PAY_MSG });
         } catch (error) { message.reply('Mohon maaf, gambar QRIS sedang bermasalah.'); }
     }
