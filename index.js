@@ -32,7 +32,7 @@ Pembayaran hanya valid jika dilakukan melalui *QRIS resmi* ini.
 Transfer melalui DM, link pribadi, atau QR lain = otomatis *dianggap tidak sah.*
 Segala bentuk salah transfer *bukan tanggung jawab admin.*`;
 
-// --- SYARAT & KETENTUAN VILOG (FINAL) ---
+// --- SYARAT & KETENTUAN VILOG (Hanya Muncul di .vilog Member) ---
 const VILOG_TNC = `🔐 *INFORMASI LENGKAP VIA LOGIN (VILOG)* 🔐
 
 1️⃣ *CARA KERJA:*
@@ -76,6 +76,7 @@ const HELP_ADMIN_ONLY = `
 ✤ *.BOOSTERRESET*
 ✤ *.VILOGUPDATE* 
 ✤ *.VILOGRESET*
+✤ *.VILOGTEST* (Cek Tampilan Vilog) ✅
 ✤ *.PTPTOPEN* (Buka Sesi Baru)
 ✤ *.PTPTSET* (Edit Jam Sesi)
 ✤ *.PTPTPAID* (Konfirmasi Bayar) ✅
@@ -87,7 +88,7 @@ const HELP_FOOTER = `
 _SeoneStore.ID - Happy Shopping!_ 🔥`;
 
 
-// Settingan Bot (MODIFIKASI KHUSUS TERMUX/LINUX)
+// Settingan Bot (WAJIB TERMUX)
 const client = new Client({
     authStrategy: new LocalAuth(),
     puppeteer: {
@@ -251,7 +252,7 @@ Tag admin yang bersangkutan dan ketik *.pay* untuk menampilkan QRIS payment yaaa
         } catch (error) { message.reply('Error sistem.'); }
     }
 
-    // === FITUR VILOG (MEMBER) ===
+    // === FITUR VILOG (MEMBER - TnC LENGKAP) ===
     if(msg === '.vilog') {
         let displayDate = 'Belum ada update';
         let displayTime = '-';
@@ -264,7 +265,7 @@ Tag admin yang bersangkutan dan ketik *.pay* untuk menampilkan QRIS payment yaaa
             } catch (err) { }
         }
         
-        // Template Vilog dengan TnC Baru
+        // Template Vilog dengan TnC Lengkap untuk Member
         const VILOG_TEMPLATE = `🔐 *VIA LOGIN PRICELIST* 🔐
 🗓️ *Tanggal Update:* ${displayDate}
 🕛 *Pukul:* ${displayTime} WIB
@@ -421,7 +422,7 @@ _List otomatis terupdate_ ✅`;
     }
 
     // --- AREA KHUSUS ADMIN ---
-    if(msg === '.gigupdate' || msg === '.gigreset' || msg === '.boosterupdate' || msg === '.boosterreset' || msg === '.vilogupdate' || msg === '.vilogreset' || msg === '.ptptreset' || msg.startsWith('.ptptopen') || msg.startsWith('.ptptset') || msg.startsWith('.ptptremove') || msg.startsWith('.ptptpaid') || msg === '.testgreet' || msg.startsWith('.p ')) {
+    if(msg === '.gigupdate' || msg === '.gigreset' || msg === '.boosterupdate' || msg === '.boosterreset' || msg === '.vilogupdate' || msg === '.vilogtest' || msg === '.vilogreset' || msg === '.ptptreset' || msg.startsWith('.ptptopen') || msg.startsWith('.ptptset') || msg.startsWith('.ptptremove') || msg.startsWith('.ptptpaid') || msg === '.testgreet' || msg.startsWith('.p ')) {
         
         if (!isUserAdmin(message)) {
             console.log(`[ALERT] Non-Admin tried to use admin command: ${msg}`);
@@ -522,7 +523,7 @@ _List otomatis terupdate_ ✅`;
             }
         }
 
-        // --- VILOG UPDATE (ADMIN) ---
+        // --- VILOG UPDATE (ADMIN - NO TNC) ---
         if(msg === '.vilogupdate') {
              const chat = await message.getChat();
              const { date, time } = getWaktuIndonesia();
@@ -534,15 +535,45 @@ _List otomatis terupdate_ ✅`;
              let mentions = [];
              for(let p of chat.participants) { try{mentions.push(await client.getContactById(p.id._serialized))}catch(e){} }
              
-             // Template Update
-             const TPL = `📢 *VIA LOGIN (JOKI) UPDATE!* 📢\n🗓️ ${date} | 🕛 ${time} WIB\n\n${VILOG_TNC}\n\n🔥 *OPEN SLOT!* Cek .pay`;
+             // Template Update SINGKAT (Tanpa TnC)
+             const TPL = `📢 *VIA LOGIN (JOKI) UPDATE!* 📢\n🗓️ ${date} | 🕛 ${time} WIB\n\n🔥 *OPEN ORDER!* Cek .pay`;
              
              if(fs.existsSync('./pricelist_vilog.png')) {
                  await chat.sendMessage(MessageMedia.fromFilePath('./pricelist_vilog.png'), { caption: TPL, mentions: mentions });
              } else { 
                  await chat.sendMessage(TPL, { mentions: mentions }); 
              }
-             console.log(`[ADMIN] VILOG Updated by Admin`);
+             console.log(`[ADMIN] VILOG Updated by Admin (Broadcast)`);
+        }
+        
+        // --- VILOG TEST (ADMIN - CEK TAMPILAN) ---
+        if(msg === '.vilogtest') {
+            // Pake data waktu sekarang buat simulasi
+            const { date, time } = getWaktuIndonesia();
+            
+            const VILOG_TEMPLATE_TEST = `🔐 *VIA LOGIN PRICELIST (TEST PREVIEW)* 🔐
+🗓️ *Tanggal Update:* ${date}
+🕛 *Pukul:* ${time} WIB
+
+${VILOG_TNC}
+
+👇 *CARA PESAN:*
+Tag admin yang bersangkutan dan ketik *.pay* untuk menampilkan QRIS payment.`;
+            
+            try {
+                // Coba cek ada gambar pricelist_vilog.png atau tidak
+                if (fs.existsSync('./pricelist_vilog.png')) {
+                    const media = MessageMedia.fromFilePath('./pricelist_vilog.png');
+                    await client.sendMessage(message.from, media, { caption: VILOG_TEMPLATE_TEST });
+                } else {
+                    message.reply(VILOG_TEMPLATE_TEST);
+                    message.reply('⚠️ *Note:* Gambar `pricelist_vilog.png` tidak ditemukan di server. Ini tampilan text-only.');
+                }
+                console.log(`[ADMIN] VILOG TEST PREVIEW Executed`);
+            } catch (error) {
+                console.log('Error Vilog Test:', error);
+                message.reply('❌ Gagal menjalankan test vilog.');
+            }
         }
 
         if(msg === '.vilogreset') {
