@@ -34,8 +34,8 @@ Segala bentuk salah transfer *bukan tanggung jawab admin.*`;
 
 // --- [GLOBAL] NOTE CARA PESAN ---
 const ORDER_NOTE = `
-*CARA PESAN:*
-Tag admin yang bersangkutan dan ketik *.pay* untuk memunculkan QRIS payment.
+*CARA BAYAR:*
+ketik *.pay* untuk memunculkan QRIS payment.
 *NOTE:*
 Kirim bukti transfer di grup ini & jangan lupa tag adminnya ya 😙`;
 
@@ -374,7 +374,7 @@ USN Wa / USN rblox
 ${listText}
 _List otomatis terupdate_ ✅
 
-*❓Cara Join???*
+*CARA JOIN???*
 _ketik : .ptptlist ${sessionCode} (username) untuk join!_
 ${ORDER_NOTE}`;
 
@@ -431,7 +431,7 @@ USN Wa / USN rblox
 ${listText}
 _List otomatis terupdate_ ✅
 
-*❓Cara Join???*
+*CARA JOIN???*
 _ketik : .ptptlist ${targetCode} (username) untuk join!_
 ${ORDER_NOTE}`;
                 
@@ -692,7 +692,7 @@ Jangan lupa tanda koma (,) untuk memisahkan Jenis dan Waktu!`);
 --------LIST MEMBER---------
 USN Wa / USN rblox
 ${listText}
-*❓Cara Join???*
+*CARA JOIN ???*
 _ketik : .ptptlist ${sessionCode} (username) untuk join!_`;
 
                 let mentions = [];
@@ -809,7 +809,7 @@ USN Wa / USN rblox
 ${listText}
 _Terima kasih yang sudah lunas!_ ✅
 
-*❓Cara Join???*
+*CARA JOIN ???*
 _ketik : .ptptlist ${sessionCode} (username) untuk join!_`;
 
                 let mentions = [];
