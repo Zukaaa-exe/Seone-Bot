@@ -32,7 +32,7 @@ Pembayaran hanya valid jika dilakukan melalui *QRIS resmi* ini.
 Transfer melalui DM, link pribadi, atau QR lain = otomatis *dianggap tidak sah.*
 Segala bentuk salah transfer *bukan tanggung jawab admin.*`;
 
-// --- SYARAT & KETENTUAN VILOG (REVISI BARU) ---
+// --- SYARAT & KETENTUAN VILOG (FINAL) ---
 const VILOG_TNC = `🔐 *INFORMASI LENGKAP VIA LOGIN (VILOG)* 🔐
 
 1️⃣ *CARA KERJA:*
@@ -74,9 +74,8 @@ const HELP_ADMIN_ONLY = `
 ✤ *.GIGRESET*
 ✤ *.BOOSTERUPDATE* 
 ✤ *.BOOSTERRESET*
-✤ *.VILOGUPDATE* (Coming Soon)
-✤ *.VILOGTEST* (Cek Tampilan Vilog)
-✤ *.VILOGRESET* (Hapus Data Vilog)
+✤ *.VILOGUPDATE* 
+✤ *.VILOGRESET*
 ✤ *.PTPTOPEN* (Buka Sesi Baru)
 ✤ *.PTPTSET* (Edit Jam Sesi)
 ✤ *.PTPTPAID* (Konfirmasi Bayar) ✅
@@ -88,7 +87,7 @@ const HELP_FOOTER = `
 _SeoneStore.ID - Happy Shopping!_ 🔥`;
 
 
-// Settingan Bot (WAJIB TERMUX)
+// Settingan Bot (MODIFIKASI KHUSUS TERMUX/LINUX)
 const client = new Client({
     authStrategy: new LocalAuth(),
     puppeteer: {
@@ -287,16 +286,10 @@ Tag admin yang bersangkutan dan ketik *.pay* untuk menampilkan QRIS payment.`;
     if (msg.startsWith('.ptptlist')) {
         let robloxUser = message.body.slice(10).trim();
         
-        // --- 1. CEK FORMAT MEMBER ---
+        // 1. Cek format
         if (!robloxUser) {
             console.log(`[LOG] User salah format .ptptlist`);
-            message.reply(`⚠️ *Format Salah!* Kamu lupa memasukkan username.
-
-📝 *Format:*
-.ptptlist [Username Roblox]
-
-✅ *Contoh:*
-.ptptlist DragonSlayer99`);
+            message.reply(`⚠️ *Format Salah!* Kamu lupa memasukkan username.\n\n📝 *Format:*\n.ptptlist [Username Roblox]\n\n✅ *Contoh:*\n.ptptlist DragonSlayer99`);
             return;
         }
 
@@ -309,12 +302,13 @@ Tag admin yang bersangkutan dan ketik *.pay* untuk menampilkan QRIS payment.`;
             const rawData = fs.readFileSync('./database_ptpt.json', 'utf8');
             let ptptData = JSON.parse(rawData);
 
+            // 2. Cek Slot Penuh
             if (ptptData.participants.length >= 20) {
                 message.reply('❌ Yah, slot sudah penuh (20/20)! Tunggu sesi berikutnya ya.');
                 return;
             }
 
-            // === SATPAM USERNAME ROBLOX ===
+            // 3. SATPAM USERNAME ROBLOX (Anti-Duplicate)
             const isRobloxTaken = ptptData.participants.some(p => p.roblox.toLowerCase() === robloxUser.toLowerCase());
 
             if (isRobloxTaken) {
@@ -327,6 +321,7 @@ Tag admin yang bersangkutan dan ketik *.pay* untuk menampilkan QRIS payment.`;
             const waName = contact.pushname || contact.number;
             const waNumber = contact.id._serialized;
 
+            // 4. Masukkan Data (Multi-slot Allowed per WA)
             ptptData.participants.push({
                 name: waName,
                 roblox: robloxUser,
@@ -426,7 +421,7 @@ _List otomatis terupdate_ ✅`;
     }
 
     // --- AREA KHUSUS ADMIN ---
-    if(msg === '.gigupdate' || msg === '.gigreset' || msg === '.boosterupdate' || msg === '.boosterreset' || msg === '.vilogupdate' || msg === '.vilogtest' || msg === '.vilogreset' || msg === '.ptptreset' || msg.startsWith('.ptptopen') || msg.startsWith('.ptptset') || msg.startsWith('.ptptremove') || msg.startsWith('.ptptpaid') || msg === '.testgreet' || msg.startsWith('.p ')) {
+    if(msg === '.gigupdate' || msg === '.gigreset' || msg === '.boosterupdate' || msg === '.boosterreset' || msg === '.vilogupdate' || msg === '.vilogreset' || msg === '.ptptreset' || msg.startsWith('.ptptopen') || msg.startsWith('.ptptset') || msg.startsWith('.ptptremove') || msg.startsWith('.ptptpaid') || msg === '.testgreet' || msg.startsWith('.p ')) {
         
         if (!isUserAdmin(message)) {
             console.log(`[ALERT] Non-Admin tried to use admin command: ${msg}`);
@@ -527,41 +522,27 @@ _List otomatis terupdate_ ✅`;
             }
         }
 
-        // --- VILOG UPDATE (ADMIN - COMING SOON MODE) ---
+        // --- VILOG UPDATE (ADMIN) ---
         if(msg === '.vilogupdate') {
-             // Output Coming Soon sesuai request
-             message.reply('🚧 *FITUR VILOG UPDATE SEDANG DALAM PENGEMBANGAN* 🚧\n\n_Coming Soon!_ Tunggu update selanjutnya ya admin ganteng. 😎');
-             console.log(`[ADMIN] VILOG Update accessed (Coming Soon state)`);
-        }
-        
-        // --- VILOG TEST (ADMIN - CEK TAMPILAN) ---
-        if(msg === '.vilogtest') {
-            // Pake data waktu sekarang buat simulasi
-            const { date, time } = getWaktuIndonesia();
-            
-            const VILOG_TEMPLATE_TEST = `🔐 *VIA LOGIN PRICELIST (TEST PREVIEW)* 🔐
-🗓️ *Tanggal Update:* ${date}
-🕛 *Pukul:* ${time} WIB
-
-${VILOG_TNC}
-
-👇 *CARA PESAN:*
-Tag admin yang bersangkutan dan ketik *.pay* untuk menampilkan QRIS payment.`;
-            
-            try {
-                // Coba cek ada gambar pricelist_vilog.png atau tidak
-                if (fs.existsSync('./pricelist_vilog.png')) {
-                    const media = MessageMedia.fromFilePath('./pricelist_vilog.png');
-                    await client.sendMessage(message.from, media, { caption: VILOG_TEMPLATE_TEST });
-                } else {
-                    message.reply(VILOG_TEMPLATE_TEST);
-                    message.reply('⚠️ *Note:* Gambar `pricelist_vilog.png` tidak ditemukan di server. Ini tampilan text-only.');
-                }
-                console.log(`[ADMIN] VILOG TEST PREVIEW Executed`);
-            } catch (error) {
-                console.log('Error Vilog Test:', error);
-                message.reply('❌ Gagal menjalankan test vilog.');
-            }
+             const chat = await message.getChat();
+             const { date, time } = getWaktuIndonesia();
+             fs.writeFileSync('./database_vilog.json', JSON.stringify({ date, time }));
+             if (message.hasMedia) {
+                const media = await message.downloadMedia();
+                if(media) fs.writeFileSync('./pricelist_vilog.png', media.data, 'base64');
+             }
+             let mentions = [];
+             for(let p of chat.participants) { try{mentions.push(await client.getContactById(p.id._serialized))}catch(e){} }
+             
+             // Template Update
+             const TPL = `📢 *VIA LOGIN (JOKI) UPDATE!* 📢\n🗓️ ${date} | 🕛 ${time} WIB\n\n${VILOG_TNC}\n\n🔥 *OPEN SLOT!* Cek .pay`;
+             
+             if(fs.existsSync('./pricelist_vilog.png')) {
+                 await chat.sendMessage(MessageMedia.fromFilePath('./pricelist_vilog.png'), { caption: TPL, mentions: mentions });
+             } else { 
+                 await chat.sendMessage(TPL, { mentions: mentions }); 
+             }
+             console.log(`[ADMIN] VILOG Updated by Admin`);
         }
 
         if(msg === '.vilogreset') {
