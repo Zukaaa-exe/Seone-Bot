@@ -80,7 +80,8 @@ const HELP_ADMIN_ONLY = `
 ✤ *.PTPTSET [KODE] [KET]*
 ✤ *.PTPTPAID [KODE] [NOMOR]*
 ✤ *.PTPTREMOVE [KODE] [NOMOR]*
-✤ *.PTPTRESET [KODE]* / *.PTPTRESET ALL*
+✤ *.PTPTRESET [KODE]*  
+✤ *.PTPTRESET ALL*
 ✤ *.P (teks)*`;
 
 const HELP_FOOTER = `
@@ -490,7 +491,6 @@ _List otomatis terupdate_ ✅`;
         }
 
         // --- GIG & BOOSTER & VILOG (ADMIN) ---
-        // (Kode sama seperti V43, dipertahankan)
         if(msg === '.gigupdate') {
              const chat = await message.getChat();
              const { date, time } = getWaktuIndonesia();
@@ -504,6 +504,7 @@ _List otomatis terupdate_ ✅`;
              const TPL = `📢 *GIG STOCK UPDATE!* 📢\n🗓️ ${date} | 🕛 ${time} WIB\n\n🔥 *READY STOCK!*\n\n👇 *CARA PESAN:*\nTag admin yang bersangkutan dan ketik *.pay*`;
              if(fs.existsSync('./pricelist.png')) { await chat.sendMessage(MessageMedia.fromFilePath('./pricelist.png'), { caption: TPL, mentions: mentions }); } 
              else { await chat.sendMessage(TPL, { mentions: mentions }); }
+             console.log(`[ADMIN] GIG Updated by Admin`);
         }
         if(msg === '.gigreset') {
             if(fs.existsSync('./database_update.json')) fs.unlinkSync('./database_update.json');
@@ -561,15 +562,28 @@ _List otomatis terupdate_ ✅`;
             const rawBody = message.body.slice(9).trim(); // Hapus command
             const firstSpace = rawBody.indexOf(' ');
             
+            // LOGIKA CHECK & OUTPUT TUTORIAL (REVISI V45)
             if (firstSpace === -1) {
-                message.reply(`⚠️ *Format Salah!* Kode sesi belum dimasukkan.
+                message.reply(`⚠️ *PANDUAN MEMBUKA SESI PTPT* ⚠️
 
-📝 *Format:*
-.ptptopen [KODE] [Jenis], [Info Waktu]
+Untuk membuka sesi baru, gunakan format berikut dengan teliti:
 
-✅ *Contoh:*
-.ptptopen 24H 12Jam, 30 Des 20.00-08.00
-.ptptopen 9H 6Jam, TBA`);
+📝 *FORMAT COMMAND:*
+.ptptopen [KODE] [JENIS SESI], [INFO WAKTU]
+
+📌 *KETERANGAN:*
+• *KODE*: Identitas unik sesi (Contoh: 24H, 9H, VIP).
+• *JENIS*: Durasi atau tipe sesi (Contoh: 12 Jam, 6 Jam).
+• *WAKTU*: Jadwal mulai dan selesai.
+
+✅ *CONTOH 1 (Jadwal Fix):*
+.ptptopen 24H 12 Jam, 30 Des 20.00 - 08.00 WIB
+
+✅ *CONTOH 2 (Jadwal TBA):*
+.ptptopen 9H 6 Jam, TBA (Menunggu Info)
+
+⚠️ *PENTING:*
+Jangan lupa tanda koma (,) untuk memisahkan Jenis dan Waktu!`);
                 return;
             }
 
@@ -577,7 +591,7 @@ _List otomatis terupdate_ ✅`;
             const details = rawBody.substring(firstSpace + 1).split(',');
 
             if (details.length < 2) {
-                message.reply('⚠️ Detail sesi kurang lengkap (Pisahkan Jenis dan Waktu dengan koma).');
+                message.reply('⚠️ *FORMAT SALAH!* Pisahkan [Jenis Sesi] dan [Info Waktu] dengan tanda koma ( , ).');
                 return;
             }
 
@@ -593,7 +607,6 @@ _List otomatis terupdate_ ✅`;
                     try {
                         const fileContent = fs.readFileSync('./database_ptpt.json', 'utf8');
                         // Cek apakah format lama (array) atau baru (object)?
-                        // Kalau format lama, kita reset biar gak error.
                         const parsed = JSON.parse(fileContent);
                         if (!Array.isArray(parsed)) {
                             allSessions = parsed;
