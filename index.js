@@ -32,7 +32,7 @@ Pembayaran hanya valid jika dilakukan melalui *QRIS resmi* ini.
 Transfer melalui DM, link pribadi, atau QR lain = otomatis *dianggap tidak sah.*
 Segala bentuk salah transfer *bukan tanggung jawab admin.*`;
 
-// --- SYARAT & KETENTUAN VILOG (MEMBER VIEW) ---
+// --- SYARAT & KETENTUAN VILOG (MEMBER) ---
 const VILOG_TNC = `🔐 *INFORMASI LENGKAP VIA LOGIN (VILOG)* 🔐
 
 1️⃣ *CARA KERJA:*
@@ -63,8 +63,8 @@ Bingung mau ngapain? Cek daftar command di bawah ini:
 ✤ *.GIG*
 ✤ *.BOOSTER*
 ✤ *.VILOG* (Via Login + TnC) ✅
-✤ *.PTPTLIST (USN)*
-✤ *.PTPTUPDATE* (Cek Info Sesi) 
+✤ *.PTPTLIST [KODE] [USN]* (Daftar Sesi)
+✤ *.PTPTUPDATE* (Cek Daftar Sesi Aktif)
 ✤ *.HELP*
 ✤ *.PING*`;
 
@@ -76,11 +76,11 @@ const HELP_ADMIN_ONLY = `
 ✤ *.BOOSTERRESET*
 ✤ *.VILOGUPDATE* 
 ✤ *.VILOGRESET*
-✤ *.PTPTOPEN* (Buka Sesi Baru)
-✤ *.PTPTSET* (Edit Jam Sesi)
-✤ *.PTPTPAID* (Konfirmasi Bayar) ✅
-✤ *.PTPTREMOVE* (Hapus Member)
-✤ *.PTPTRESET* (Tutup/Hapus Sesi)
+✤ *.PTPTOPEN [KODE] [KET]*
+✤ *.PTPTSET [KODE] [KET]*
+✤ *.PTPTPAID [KODE] [NOMOR]*
+✤ *.PTPTREMOVE [KODE] [NOMOR]*
+✤ *.PTPTRESET [KODE]* / *.PTPTRESET ALL*
 ✤ *.P (teks)*`;
 
 const HELP_FOOTER = `
@@ -264,7 +264,6 @@ Tag admin yang bersangkutan dan ketik *.pay* untuk menampilkan QRIS payment yaaa
             } catch (err) { }
         }
         
-        // Template Vilog dengan TnC Lengkap untuk Member
         const VILOG_TEMPLATE = `🔐 *VIA LOGIN PRICELIST* 🔐
 🗓️ *Tanggal Update:* ${displayDate}
 🕛 *Pukul:* ${displayTime} WIB
@@ -282,38 +281,60 @@ Tag admin yang bersangkutan dan ketik *.pay* untuk menampilkan QRIS payment.`;
         } catch (error) { message.reply('Error sistem.'); }
     }
 
-    // === FITUR PTPT LIST (MEMBER) ===
+    // =========================================================
+    // === SISTEM PTPT BARU (MULTI-SESSION / BANYAK KAMAR) ===
+    // =========================================================
+
+    // === 1. FITUR PTPT LIST (MEMBER) ===
     if (msg.startsWith('.ptptlist')) {
-        let robloxUser = message.body.slice(10).trim();
-        
-        // 1. Cek format
-        if (!robloxUser) {
-            console.log(`[LOG] User salah format .ptptlist`);
-            message.reply(`⚠️ *Format Salah!* Kamu lupa memasukkan username.\n\n📝 *Format:*\n.ptptlist [Username Roblox]\n\n✅ *Contoh:*\n.ptptlist DragonSlayer99`);
+        // Format Baru: .ptptlist [KODE] [USERNAME]
+        const args = message.body.slice(9).trim().split(' ');
+        const sessionCode = args[0] ? args[0].toUpperCase() : null;
+        const robloxUser = args.slice(1).join(' '); // Ambil sisanya sebagai username
+
+        // 1. Cek Format Input
+        if (!sessionCode || !robloxUser) {
+            message.reply(`⚠️ *Format Salah!* Harap masukkan Kode Sesi & Username.
+
+📋 *Format:*
+.ptptlist [KODE] [Username Roblox]
+
+✅ *Contoh:*
+.ptptlist 24H DragonSlayer
+.ptptlist 9H ProPlayer123
+
+_Cek kode sesi yang aktif dengan ketik .ptptupdate_`);
             return;
         }
 
         if (!fs.existsSync('./database_ptpt.json')) {
-            message.reply('⚠️ Belum ada sesi PTPT yang dibuka oleh Admin.');
+            message.reply('⚠️ Belum ada sesi PTPT apapun yang aktif.');
             return;
         }
 
         try {
             const rawData = fs.readFileSync('./database_ptpt.json', 'utf8');
-            let ptptData = JSON.parse(rawData);
+            let allSessions = JSON.parse(rawData);
 
-            // 2. Cek Slot Penuh
-            if (ptptData.participants.length >= 20) {
-                message.reply('❌ Yah, slot sudah penuh (20/20)! Tunggu sesi berikutnya ya.');
+            // 2. Cek Apakah Sesi Ada?
+            if (!allSessions[sessionCode]) {
+                message.reply(`❌ Sesi dengan kode *${sessionCode}* tidak ditemukan!\nKetik *.ptptupdate* untuk melihat daftar sesi aktif.`);
                 return;
             }
 
-            // 3. SATPAM USERNAME ROBLOX (Anti-Duplicate)
-            const isRobloxTaken = ptptData.participants.some(p => p.roblox.toLowerCase() === robloxUser.toLowerCase());
+            let currentSession = allSessions[sessionCode];
+
+            // 3. Cek Slot Penuh
+            if (currentSession.participants.length >= 20) {
+                message.reply(`❌ Yah, slot sesi *${sessionCode}* sudah penuh (20/20)!`);
+                return;
+            }
+
+            // 4. SATPAM USERNAME ROBLOX (Per Sesi)
+            const isRobloxTaken = currentSession.participants.some(p => p.roblox.toLowerCase() === robloxUser.toLowerCase());
 
             if (isRobloxTaken) {
-                console.log(`[LOG] Username Roblox duplicate detected: ${robloxUser}`);
-                message.reply(`⚠️ Username Roblox *${robloxUser}* sudah terdaftar di list!`);
+                message.reply(`⚠️ Username Roblox *${robloxUser}* sudah terdaftar di sesi *${sessionCode}*!`);
                 return;
             }
 
@@ -321,35 +342,35 @@ Tag admin yang bersangkutan dan ketik *.pay* untuk menampilkan QRIS payment.`;
             const waName = contact.pushname || contact.number;
             const waNumber = contact.id._serialized;
 
-            // 4. Masukkan Data (Multi-slot Allowed per WA)
-            ptptData.participants.push({
+            // 5. Masukkan Data ke Sesi Tersebut
+            currentSession.participants.push({
                 name: waName,
                 roblox: robloxUser,
                 id: waNumber,
                 isPaid: false 
             });
 
-            fs.writeFileSync('./database_ptpt.json', JSON.stringify(ptptData));
-            console.log(`[LOG] User joined PTPT: ${robloxUser} (${waName})`);
+            // Simpan Balik ke Database Utama
+            allSessions[sessionCode] = currentSession;
+            fs.writeFileSync('./database_ptpt.json', JSON.stringify(allSessions));
+            console.log(`[LOG] User joined Session ${sessionCode}: ${robloxUser}`);
 
+            // 6. Output List (Khusus Sesi Ini)
             let listText = '';
             for (let i = 0; i < 20; i++) {
                 const num = i + 1;
-                if (ptptData.participants[i]) {
-                    const paidIcon = ptptData.participants[i].isPaid ? ' ✅' : '';
-                    listText += `${num}. ${ptptData.participants[i].name} / ${ptptData.participants[i].roblox}${paidIcon}\n`;
+                if (currentSession.participants[i]) {
+                    const paidIcon = currentSession.participants[i].isPaid ? ' ✅' : '';
+                    listText += `${num}. ${currentSession.participants[i].name} / ${currentSession.participants[i].roblox}${paidIcon}\n`;
                 } else {
                     listText += `${num}.\n`;
                 }
             }
 
-            const FINAL_TEMPLATE = `📢 SESSION INFO OPEN
-• Jenis Sesi: ${ptptData.sessionType}
-• Status: OPEN
-• Tanggal: ${ptptData.customDate}
-• Jam Mulai: ${ptptData.startTime} WIB
-• Jam Selesai: ${ptptData.endTime} WIB
-• Link Server: (akan muncul setelah sesi dimulai)
+            const FINAL_TEMPLATE = `📢 SESSION INFO (${sessionCode})
+• Jenis: ${currentSession.sessionType}
+• Waktu: ${currentSession.timeInfo}
+• Status: OPEN (${currentSession.participants.length}/20)
 
 --------LIST MEMBER---------
 USN Wa / USN rblox
@@ -364,54 +385,72 @@ _List otomatis terupdate_ ✅`;
         }
     }
 
-    // === FITUR PTPT UPDATE (VIEW INFO) ===
-    if(msg === '.ptptupdate') {
-        
+    // === 2. FITUR PTPT UPDATE (VIEW INFO) ===
+    if(msg.startsWith('.ptptupdate')) {
+        // Bisa .ptptupdate (Semua) atau .ptptupdate [KODE]
+        const args = message.body.slice(11).trim().split(' ');
+        const targetCode = args[0] ? args[0].toUpperCase() : null;
+
         if (!fs.existsSync('./database_ptpt.json')) {
-            message.reply('⚠️ Belum ada sesi aktif. Gunakan *.ptptopen* untuk membuat sesi baru.');
+            message.reply('⚠️ Belum ada sesi aktif.');
             return;
         }
 
         try {
-            console.log(`[LOG] User requesting .ptptupdate`);
-            const chat = await message.getChat();
             const rawData = fs.readFileSync('./database_ptpt.json', 'utf8');
-            const ptptData = JSON.parse(rawData);
+            const allSessions = JSON.parse(rawData);
+            const sessionKeys = Object.keys(allSessions);
 
-            let listText = '';
-            for (let i = 0; i < 20; i++) {
-                const num = i + 1;
-                if (ptptData.participants[i]) {
-                    const paidIcon = ptptData.participants[i].isPaid ? ' ✅' : '';
-                    listText += `${num}. ${ptptData.participants[i].name} / ${ptptData.participants[i].roblox}${paidIcon}\n`;
-                } else {
-                    listText += `${num}.\n`;
-                }
+            if (sessionKeys.length === 0) {
+                message.reply('⚠️ Database kosong (Belum ada sesi).');
+                return;
             }
 
-            const PTPT_TEMPLATE = `📢 SESSION INFO REFRESH
-• Jenis Sesi: ${ptptData.sessionType}
-• Status: OPEN
-• Tanggal: ${ptptData.customDate}
-• Jam Mulai: ${ptptData.startTime} WIB
-• Jam Selesai: ${ptptData.endTime} WIB
-• Link Server: (akan muncul setelah sesi dimulai)
+            // A. Jika user mengetik KODE SPESIFIK -> Tampilkan List Detail
+            if (targetCode && allSessions[targetCode]) {
+                let currentSession = allSessions[targetCode];
+                let listText = '';
+                for (let i = 0; i < 20; i++) {
+                    const num = i + 1;
+                    if (currentSession.participants[i]) {
+                        const paidIcon = currentSession.participants[i].isPaid ? ' ✅' : '';
+                        listText += `${num}. ${currentSession.participants[i].name} / ${currentSession.participants[i].roblox}${paidIcon}\n`;
+                    } else {
+                        listText += `${num}.\n`;
+                    }
+                }
+
+                const DETAIL_TEMPLATE = `📢 SESSION INFO (${targetCode})
+• Jenis: ${currentSession.sessionType}
+• Waktu: ${currentSession.timeInfo}
+• Status: OPEN (${currentSession.participants.length}/20)
 
 --------LIST MEMBER---------
 USN Wa / USN rblox
 ${listText}
 _List otomatis terupdate_ ✅`;
+                
+                // Kirim Gambar (Jika ada gambar spesifik untuk sesi, bisa dikembangkan. Skrg pakai default ptpt_image)
+                if (fs.existsSync('./ptpt_image.png')) {
+                    await client.sendMessage(message.from, MessageMedia.fromFilePath('./ptpt_image.png'), { caption: DETAIL_TEMPLATE });
+                } else {
+                    await message.reply(DETAIL_TEMPLATE);
+                }
 
-            let mentions = [];
-            for(let participant of chat.participants) {
-                try { mentions.push(await client.getContactById(participant.id._serialized)); } catch (err) {}
-            }
-
-            if (fs.existsSync('./ptpt_image.png')) {
-                const mediaToSend = MessageMedia.fromFilePath('./ptpt_image.png');
-                await chat.sendMessage(mediaToSend, { caption: PTPT_TEMPLATE, mentions: mentions });
             } else {
-                await chat.sendMessage(PTPT_TEMPLATE, { mentions: mentions });
+                // B. Jika user HANYA mengetik .ptptupdate -> Tampilkan Ringkasan Semua Sesi
+                let summaryText = `📋 *DAFTAR SESI AKTIF SAAT INI:*\n\n`;
+                
+                sessionKeys.forEach(code => {
+                    const s = allSessions[code];
+                    summaryText += `🔹 *KODE: ${code}* (${s.sessionType})\n`;
+                    summaryText += `   📅 Waktu: ${s.timeInfo}\n`;
+                    summaryText += `   👥 Slot: ${s.participants.length}/20 Terisi\n`;
+                    summaryText += `   👉 Ketik: *.ptptlist ${code} [Username]*\n\n`;
+                });
+
+                summaryText += `_Ingin lihat list lengkap? Ketik .ptptupdate [KODE]_`;
+                await message.reply(summaryText);
             }
 
         } catch (error) {
@@ -421,10 +460,9 @@ _List otomatis terupdate_ ✅`;
     }
 
     // --- AREA KHUSUS ADMIN ---
-    if(msg === '.gigupdate' || msg === '.gigreset' || msg === '.boosterupdate' || msg === '.boosterreset' || msg === '.vilogupdate' || msg === '.vilogreset' || msg === '.ptptreset' || msg.startsWith('.ptptopen') || msg.startsWith('.ptptset') || msg.startsWith('.ptptremove') || msg.startsWith('.ptptpaid') || msg === '.testgreet' || msg.startsWith('.p ')) {
+    if(msg === '.gigupdate' || msg === '.gigreset' || msg === '.boosterupdate' || msg === '.boosterreset' || msg === '.vilogupdate' || msg === '.vilogreset' || msg.startsWith('.ptptreset') || msg.startsWith('.ptptopen') || msg.startsWith('.ptptset') || msg.startsWith('.ptptremove') || msg.startsWith('.ptptpaid') || msg === '.testgreet' || msg.startsWith('.p ')) {
         
         if (!isUserAdmin(message)) {
-            console.log(`[ALERT] Non-Admin tried to use admin command: ${msg}`);
             message.reply('kamu bukan admin, jangan coba-coba ya dek yaaa😙'); 
             return; 
         }
@@ -437,16 +475,7 @@ _List otomatis terupdate_ ✅`;
 
         if(msg.startsWith('.p ')) {
             const textToSend = message.body.slice(3).trim();
-            if(!textToSend) {
-                message.reply(`⚠️ *Format Salah!* Masukkan teks broadcast.
-
-📝 *Format:*
-.p [Pesan Kamu]
-
-✅ *Contoh:*
-.p Halo semua, mabar yuk!`);
-                return;
-            }
+            if(!textToSend) { message.reply(`⚠️ *Format Salah!*\n\n📝 *Format:*\n.p [Pesan Kamu]`); return; }
             try {
                 const chat = await message.getChat();
                 let mentions = [];
@@ -460,6 +489,8 @@ _List otomatis terupdate_ ✅`;
             } catch (error) {}
         }
 
+        // --- GIG & BOOSTER & VILOG (ADMIN) ---
+        // (Kode sama seperti V43, dipertahankan)
         if(msg === '.gigupdate') {
              const chat = await message.getChat();
              const { date, time } = getWaktuIndonesia();
@@ -470,30 +501,15 @@ _List otomatis terupdate_ ✅`;
              }
              let mentions = [];
              for(let p of chat.participants) { try{mentions.push(await client.getContactById(p.id._serialized))}catch(e){} }
-             
-             // --- TEMPLATE SERAGAM GIG ---
              const TPL = `📢 *GIG STOCK UPDATE!* 📢\n🗓️ ${date} | 🕛 ${time} WIB\n\n🔥 *READY STOCK!*\n\n👇 *CARA PESAN:*\nTag admin yang bersangkutan dan ketik *.pay*`;
-             
-             if(fs.existsSync('./pricelist.png')) {
-                 await chat.sendMessage(MessageMedia.fromFilePath('./pricelist.png'), { caption: TPL, mentions: mentions });
-             } else { await chat.sendMessage(TPL, { mentions: mentions }); }
-             console.log(`[ADMIN] GIG Updated by Admin`);
+             if(fs.existsSync('./pricelist.png')) { await chat.sendMessage(MessageMedia.fromFilePath('./pricelist.png'), { caption: TPL, mentions: mentions }); } 
+             else { await chat.sendMessage(TPL, { mentions: mentions }); }
         }
-
         if(msg === '.gigreset') {
-            message.reply('⏳ _Menghapus data update GIG..._');
-            try {
-                if(fs.existsSync('./database_update.json')) fs.unlinkSync('./database_update.json');
-                if(fs.existsSync('./pricelist.png')) fs.unlinkSync('./pricelist.png');
-                
-                message.reply('✅ *SUKSES!* Data GIG telah direset. (Member akan melihat "Belum ada update")');
-                console.log(`[ADMIN] GIG Data RESET`);
-            } catch (error) {
-                console.log('Error Gig Reset:', error);
-                message.reply('❌ Gagal mereset data GIG.');
-            }
+            if(fs.existsSync('./database_update.json')) fs.unlinkSync('./database_update.json');
+            if(fs.existsSync('./pricelist.png')) fs.unlinkSync('./pricelist.png');
+            message.reply('✅ Data GIG direset.');
         }
-
         if(msg === '.boosterupdate') {
              const chat = await message.getChat();
              const { date, time } = getWaktuIndonesia();
@@ -504,31 +520,15 @@ _List otomatis terupdate_ ✅`;
              }
              let mentions = [];
              for(let p of chat.participants) { try{mentions.push(await client.getContactById(p.id._serialized))}catch(e){} }
-             
-             // --- TEMPLATE SERAGAM BOOSTER ---
              const TPL = `📢 *BOOSTER UPDATE!* 📢\n🗓️ ${date} | 🕛 ${time} WIB\n\n🔥 *OPEN SLOT!*\n\n👇 *CARA PESAN:*\nTag admin yang bersangkutan dan ketik *.pay*`;
-             
-             if(fs.existsSync('./pricelist_booster.png')) {
-                 await chat.sendMessage(MessageMedia.fromFilePath('./pricelist_booster.png'), { caption: TPL, mentions: mentions });
-             } else { await chat.sendMessage(TPL, { mentions: mentions }); }
-             console.log(`[ADMIN] Booster Updated by Admin`);
+             if(fs.existsSync('./pricelist_booster.png')) { await chat.sendMessage(MessageMedia.fromFilePath('./pricelist_booster.png'), { caption: TPL, mentions: mentions }); } 
+             else { await chat.sendMessage(TPL, { mentions: mentions }); }
         }
-
         if(msg === '.boosterreset') {
-            message.reply('⏳ _Menghapus data update BOOSTER..._');
-            try {
-                if(fs.existsSync('./database_booster.json')) fs.unlinkSync('./database_booster.json');
-                if(fs.existsSync('./pricelist_booster.png')) fs.unlinkSync('./pricelist_booster.png');
-                
-                message.reply('✅ *SUKSES!* Data Booster telah direset. (Member akan melihat "Belum ada update")');
-                console.log(`[ADMIN] BOOSTER Data RESET`);
-            } catch (error) {
-                console.log('Error Booster Reset:', error);
-                message.reply('❌ Gagal mereset data Booster.');
-            }
+            if(fs.existsSync('./database_booster.json')) fs.unlinkSync('./database_booster.json');
+            if(fs.existsSync('./pricelist_booster.png')) fs.unlinkSync('./pricelist_booster.png');
+            message.reply('✅ Data Booster direset.');
         }
-
-        // --- VILOG UPDATE (ADMIN - SERAGAM) ---
         if(msg === '.vilogupdate') {
              const chat = await message.getChat();
              const { date, time } = getWaktuIndonesia();
@@ -539,172 +539,97 @@ _List otomatis terupdate_ ✅`;
              }
              let mentions = [];
              for(let p of chat.participants) { try{mentions.push(await client.getContactById(p.id._serialized))}catch(e){} }
-             
-             // --- TEMPLATE SERAGAM VILOG ---
              const TPL = `📢 *VIA LOGIN (JOKI) UPDATE!* 📢\n🗓️ ${date} | 🕛 ${time} WIB\n\n🔥 *OPEN ORDER!*\n\n👇 *CARA PESAN:*\nTag admin yang bersangkutan dan ketik *.pay*`;
-             
-             if(fs.existsSync('./pricelist_vilog.png')) {
-                 await chat.sendMessage(MessageMedia.fromFilePath('./pricelist_vilog.png'), { caption: TPL, mentions: mentions });
-             } else { 
-                 await chat.sendMessage(TPL, { mentions: mentions }); 
-             }
-             console.log(`[ADMIN] VILOG Updated by Admin (Broadcast)`);
+             if(fs.existsSync('./pricelist_vilog.png')) { await chat.sendMessage(MessageMedia.fromFilePath('./pricelist_vilog.png'), { caption: TPL, mentions: mentions }); } 
+             else { await chat.sendMessage(TPL, { mentions: mentions }); }
         }
-
         if(msg === '.vilogreset') {
-            try {
-                if(fs.existsSync('./database_vilog.json')) fs.unlinkSync('./database_vilog.json');
-                if(fs.existsSync('./pricelist_vilog.png')) fs.unlinkSync('./pricelist_vilog.png');
-                message.reply('✅ *SUKSES!* Data Vilog telah direset.');
-                console.log(`[ADMIN] VILOG Data RESET`);
-            } catch (error) { 
-                console.log('Error Vilog Reset:', error);
-                message.reply('❌ Gagal mereset data Vilog.'); 
-            }
+            if(fs.existsSync('./database_vilog.json')) fs.unlinkSync('./database_vilog.json');
+            if(fs.existsSync('./pricelist_vilog.png')) fs.unlinkSync('./pricelist_vilog.png');
+            message.reply('✅ Data Vilog direset.');
         }
 
-        // === 1. FITUR PTPT OPEN ===
-        if(msg.startsWith('.ptptopen')) {
-            const rawText = message.body.slice(9).trim(); 
-            const args = rawText.split(',');
+        // =========================================================
+        // === ADMIN PTPT MULTI-SESSION MANAGEMENT ===
+        // =========================================================
 
-            if (args.length < 4) {
-                console.log(`[ADMIN] Invalid .ptptopen format`);
-                message.reply(`⚠️ *Format Salah!* Harap masukkan detail sesi.
+        // 1. OPEN SESI
+        if(msg.startsWith('.ptptopen')) {
+            // Format: .ptptopen [KODE] [Jenis], [WaktuLengkap]
+            // Contoh: .ptptopen 24H 12Jam, 30 Des 20.00 - 08.00
+            
+            const rawBody = message.body.slice(9).trim(); // Hapus command
+            const firstSpace = rawBody.indexOf(' ');
+            
+            if (firstSpace === -1) {
+                message.reply(`⚠️ *Format Salah!* Kode sesi belum dimasukkan.
 
 📝 *Format:*
-.ptptopen Jenis, Tanggal, Jam Mulai, Jam Selesai
+.ptptopen [KODE] [Jenis], [Info Waktu]
 
-✅ *Contoh Jadwal Fix:*
-.ptptopen 12H, 30 Des, 20.00, 08.00
-
-✅ *Contoh Jadwal TBA:*
-.ptptopen 6H, TBA, TBA, TBA
-
-*Note:* Jika jadwal belum diketahui, isi dengan TBA(To Be Announcement) pada bagian tanggal & jam.`);
+✅ *Contoh:*
+.ptptopen 24H 12Jam, 30 Des 20.00-08.00
+.ptptopen 9H 6Jam, TBA`);
                 return;
             }
 
-            const sessionType = args[0].trim();
-            const customDate = args[1].trim();
-            const startTime = args[2].trim();
-            const endTime = args[3].trim();
+            const sessionCode = rawBody.substring(0, firstSpace).toUpperCase();
+            const details = rawBody.substring(firstSpace + 1).split(',');
 
-            message.reply('⏳ _Mereset list & membuka sesi baru..._');
+            if (details.length < 2) {
+                message.reply('⚠️ Detail sesi kurang lengkap (Pisahkan Jenis dan Waktu dengan koma).');
+                return;
+            }
+
+            const sessionType = details[0].trim();
+            const timeInfo = details[1].trim();
+
+            message.reply(`⏳ Membuka sesi baru dengan kode *${sessionCode}*...`);
             
             try {
-                const chat = await message.getChat();
-
-                const newSessionData = {
-                    sessionType: sessionType,
-                    customDate: customDate,
-                    startTime: startTime,
-                    endTime: endTime,
-                    participants: [] 
-                };
-                fs.writeFileSync('./database_ptpt.json', JSON.stringify(newSessionData));
-
-                let hasImage = false;
-                if (message.hasMedia) {
-                    const media = await message.downloadMedia();
-                    if(media) {
-                        fs.writeFileSync('./ptpt_image.png', media.data, 'base64');
-                        hasImage = true;
-                    }
+                // Baca DB Lama atau Buat Baru
+                let allSessions = {};
+                if (fs.existsSync('./database_ptpt.json')) {
+                    try {
+                        const fileContent = fs.readFileSync('./database_ptpt.json', 'utf8');
+                        // Cek apakah format lama (array) atau baru (object)?
+                        // Kalau format lama, kita reset biar gak error.
+                        const parsed = JSON.parse(fileContent);
+                        if (!Array.isArray(parsed)) {
+                            allSessions = parsed;
+                        }
+                    } catch(e) {}
                 }
 
+                // Buat Object Sesi Baru
+                allSessions[sessionCode] = {
+                    sessionType: sessionType,
+                    timeInfo: timeInfo,
+                    participants: []
+                };
+
+                fs.writeFileSync('./database_ptpt.json', JSON.stringify(allSessions));
+
+                // Simpan Gambar (Global untuk semua ptpt, atau replace yg lama)
+                if (message.hasMedia) {
+                    const media = await message.downloadMedia();
+                    if(media) fs.writeFileSync('./ptpt_image.png', media.data, 'base64');
+                }
+
+                // Broadcast Pembukaan
+                const chat = await message.getChat();
                 let listText = '';
                 for (let i = 1; i <= 20; i++) listText += `${i}.\n`;
 
-                const PTPT_TEMPLATE = `📢 SESSION INFO OPEN
-• Jenis Sesi: ${sessionType}
-• Status: OPEN
-• Tanggal: ${customDate}
-• Jam Mulai: ${startTime} WIB
-• Jam Selesai: ${endTime} WIB
-• Link Server: (akan muncul setelah sesi dimulai)
+                const PTPT_TEMPLATE = `📢 SESSION INFO OPEN (${sessionCode})
+• Jenis: ${sessionType}
+• Waktu: ${timeInfo}
+• Status: OPEN (0/20)
 
 --------LIST MEMBER---------
 USN Wa / USN rblox
 ${listText}
-_Yang mau Join *Wajib Menggunakan bot* dengan ketik .ptptlist [username_roblox] agar di input otomatis_`;
-
-                let mentions = [];
-                for(let participant of chat.participants) {
-                    try { mentions.push(await client.getContactById(participant.id._serialized)); } catch (err) {}
-                }
-
-                if (hasImage || fs.existsSync('./ptpt_image.png')) {
-                    const mediaToSend = MessageMedia.fromFilePath('./ptpt_image.png');
-                    await chat.sendMessage(mediaToSend, { caption: PTPT_TEMPLATE, mentions: mentions });
-                } else {
-                    await chat.sendMessage(PTPT_TEMPLATE, { mentions: mentions });
-                }
-                console.log(`[ADMIN] PTPT Session Opened: ${sessionType}`);
-
-            } catch (error) {
-                console.log('Error PTPT Open:', error);
-                message.reply('❌ Gagal membuka sesi PTPT.');
-            }
-        }
-
-        // === 2. FITUR PTPT SET (EDIT WAKTU) ===
-        if(msg.startsWith('.ptptset')) {
-            const rawText = message.body.slice(8).trim(); 
-            const args = rawText.split(',');
-
-            if (args.length < 3) {
-                console.log(`[ADMIN] Invalid .ptptset format`);
-                message.reply(`⚠️ *Format Salah!* Gunakan ini untuk revisi jadwal.
-
-📝 *Format:*
-.ptptset Tanggal, Jam Mulai, Jam Selesai
-
-✅ *Contoh:*
-.ptptset 30 Des, 20.00, 24.00`);
-                return;
-            }
-
-            if (!fs.existsSync('./database_ptpt.json')) {
-                message.reply('⚠️ Database kosong. Bikin sesi dulu pakai .ptptopen');
-                return;
-            }
-
-            try {
-                const rawData = fs.readFileSync('./database_ptpt.json', 'utf8');
-                let ptptData = JSON.parse(rawData);
-
-                ptptData.customDate = args[0].trim();
-                ptptData.startTime = args[1].trim();
-                ptptData.endTime = args[2].trim();
-
-                fs.writeFileSync('./database_ptpt.json', JSON.stringify(ptptData));
-
-                const chat = await message.getChat();
-                
-                let listText = '';
-                for (let i = 0; i < 20; i++) {
-                    const num = i + 1;
-                    if (ptptData.participants[i]) {
-                        const paidIcon = ptptData.participants[i].isPaid ? ' ✅' : '';
-                        listText += `${num}. ${ptptData.participants[i].name} / ${ptptData.participants[i].roblox}${paidIcon}\n`;
-                    } else {
-                        listText += `${num}.\n`;
-                    }
-                }
-
-                const PTPT_TEMPLATE = `📢 *SESSION INFO UPDATED!*
-• Jenis Sesi: ${ptptData.sessionType}
-• Status: OPEN
-• Tanggal: ${ptptData.customDate} (FIX)
-• Jam Mulai: ${ptptData.startTime} WIB (FIX)
-• Jam Selesai: ${ptptData.endTime} WIB (FIX)
-• Link Server: (akan muncul setelah sesi dimulai)
-
---------LIST MEMBER---------
-USN Wa / USN rblox
-${listText}
-_Jadwal sudah fix ya guys!_ 🚀`;
+_Ketik: .ptptlist ${sessionCode} [Username] untuk join!_`;
 
                 let mentions = [];
                 for(let participant of chat.participants) {
@@ -712,82 +637,111 @@ _Jadwal sudah fix ya guys!_ 🚀`;
                 }
 
                 if (fs.existsSync('./ptpt_image.png')) {
-                    const mediaToSend = MessageMedia.fromFilePath('./ptpt_image.png');
-                    await chat.sendMessage(mediaToSend, { caption: PTPT_TEMPLATE, mentions: mentions });
+                    await chat.sendMessage(MessageMedia.fromFilePath('./ptpt_image.png'), { caption: PTPT_TEMPLATE, mentions: mentions });
                 } else {
                     await chat.sendMessage(PTPT_TEMPLATE, { mentions: mentions });
                 }
-                console.log(`[ADMIN] PTPT Schedule Updated`);
+                console.log(`[ADMIN] Opened Session: ${sessionCode}`);
 
             } catch (error) {
-                console.log('Error PTPT Set:', error);
-                message.reply('❌ Gagal update info sesi.');
+                console.log('Error PTPT Open:', error);
+                message.reply('❌ Gagal membuka sesi.');
             }
         }
 
-        // === 3. FITUR PTPT PAID (KONFIRMASI BAYAR) ===
-        if(msg.startsWith('.ptptpaid')) {
-            const rawText = message.body.slice(9).trim(); 
-            if (!rawText) {
-                console.log(`[ADMIN] Invalid .ptptpaid format`);
-                message.reply(`⚠️ *Format Salah!* Masukkan nomor urut member.
+        // 2. SET/EDIT SESI
+        if(msg.startsWith('.ptptset')) {
+            // Format: .ptptset [KODE] [InfoWaktuBaru]
+            const rawBody = message.body.slice(8).trim();
+            const firstSpace = rawBody.indexOf(' ');
 
-📝 *Format:*
-.ptptpaid [Nomor Urut]
-
-✅ *Contoh (Satu Orang):*
-.ptptpaid 1
-
-✅ *Contoh (Banyak):*
-.ptptpaid 1, 3, 5`);
+            if (firstSpace === -1) {
+                message.reply('⚠️ Format: .ptptset [KODE] [Info Waktu Baru]');
                 return;
             }
 
-            if (!fs.existsSync('./database_ptpt.json')) {
-                message.reply('⚠️ Database kosong.');
-                return;
-            }
+            const sessionCode = rawBody.substring(0, firstSpace).toUpperCase();
+            const newTimeInfo = rawBody.substring(firstSpace + 1).trim();
+
+            if (!fs.existsSync('./database_ptpt.json')) return;
 
             try {
                 const rawData = fs.readFileSync('./database_ptpt.json', 'utf8');
-                let ptptData = JSON.parse(rawData);
+                let allSessions = JSON.parse(rawData);
 
-                const indices = rawText.split(',').map(item => parseInt(item.trim()) - 1); 
+                if (!allSessions[sessionCode]) {
+                    message.reply(`❌ Sesi ${sessionCode} tidak ditemukan.`);
+                    return;
+                }
 
+                allSessions[sessionCode].timeInfo = newTimeInfo;
+                fs.writeFileSync('./database_ptpt.json', JSON.stringify(allSessions));
+                message.reply(`✅ Info waktu sesi *${sessionCode}* berhasil diupdate.`);
+
+            } catch (error) { message.reply('❌ Gagal update.'); }
+        }
+
+        // 3. PAID CONFIRMATION
+        if(msg.startsWith('.ptptpaid')) {
+            // Format: .ptptpaid [KODE] [NOMOR, NOMOR]
+            const rawBody = message.body.slice(9).trim();
+            const firstSpace = rawBody.indexOf(' ');
+
+            if (firstSpace === -1) {
+                message.reply('⚠️ Format: .ptptpaid [KODE] [Nomor Urut]');
+                return;
+            }
+
+            const sessionCode = rawBody.substring(0, firstSpace).toUpperCase();
+            const numbersText = rawBody.substring(firstSpace + 1).trim();
+
+            if (!fs.existsSync('./database_ptpt.json')) return;
+
+            try {
+                const rawData = fs.readFileSync('./database_ptpt.json', 'utf8');
+                let allSessions = JSON.parse(rawData);
+
+                if (!allSessions[sessionCode]) {
+                    message.reply(`❌ Sesi ${sessionCode} tidak ditemukan.`);
+                    return;
+                }
+
+                const indices = numbersText.split(',').map(item => parseInt(item.trim()) - 1);
+                let currentSession = allSessions[sessionCode];
                 let updatedCount = 0;
 
                 indices.forEach(index => {
-                    if (ptptData.participants[index]) {
-                        ptptData.participants[index].isPaid = true; 
+                    if (currentSession.participants[index]) {
+                        currentSession.participants[index].isPaid = true;
                         updatedCount++;
                     }
                 });
 
                 if (updatedCount === 0) {
-                    message.reply('⚠️ Tidak ada member di nomor tersebut.');
+                    message.reply('⚠️ Tidak ada member valid yang diupdate.');
                     return;
                 }
 
-                fs.writeFileSync('./database_ptpt.json', JSON.stringify(ptptData));
+                // Simpan
+                allSessions[sessionCode] = currentSession;
+                fs.writeFileSync('./database_ptpt.json', JSON.stringify(allSessions));
 
+                // Broadcast Update
                 const chat = await message.getChat();
                 let listText = '';
                 for (let i = 0; i < 20; i++) {
                     const num = i + 1;
-                    if (ptptData.participants[i]) {
-                        const paidIcon = ptptData.participants[i].isPaid ? ' ✅' : '';
-                        listText += `${num}. ${ptptData.participants[i].name} / ${ptptData.participants[i].roblox}${paidIcon}\n`;
+                    if (currentSession.participants[i]) {
+                        const paidIcon = currentSession.participants[i].isPaid ? ' ✅' : '';
+                        listText += `${num}. ${currentSession.participants[i].name} / ${currentSession.participants[i].roblox}${paidIcon}\n`;
                     } else {
                         listText += `${num}.\n`;
                     }
                 }
 
-                const PTPT_TEMPLATE = `📢 *PAYMENT CONFIRMED!*
-• Jenis Sesi: ${ptptData.sessionType}
-• Status: OPEN
-• Tanggal: ${ptptData.customDate}
-• Jam Mulai: ${ptptData.startTime} WIB
-• Jam Selesai: ${ptptData.endTime} WIB
+                const PTPT_TEMPLATE = `📢 *PAYMENT CONFIRMED (${sessionCode})*
+• Jenis: ${currentSession.sessionType}
+• Waktu: ${currentSession.timeInfo}
 
 --------LIST MEMBER---------
 USN Wa / USN rblox
@@ -800,72 +754,90 @@ _Terima kasih yang sudah lunas!_ ✅`;
                 }
 
                 if (fs.existsSync('./ptpt_image.png')) {
-                    const mediaToSend = MessageMedia.fromFilePath('./ptpt_image.png');
-                    await chat.sendMessage(mediaToSend, { caption: PTPT_TEMPLATE, mentions: mentions });
+                    await chat.sendMessage(MessageMedia.fromFilePath('./ptpt_image.png'), { caption: PTPT_TEMPLATE, mentions: mentions });
                 } else {
                     await chat.sendMessage(PTPT_TEMPLATE, { mentions: mentions });
                 }
-                console.log(`[ADMIN] Confirmed payment for ${updatedCount} members`);
 
-            } catch (error) {
-                console.log('Error PTPT Paid:', error);
-                message.reply('❌ Gagal update status bayar.');
-            }
+            } catch (error) { console.log(error); message.reply('❌ Error confirming payment.'); }
         }
 
-        // === 4. FITUR PTPT REMOVE (HAPUS MEMBER) ===
+        // 4. REMOVE MEMBER
         if(msg.startsWith('.ptptremove')) {
-            const targetIndex = parseInt(message.body.slice(11).trim()) - 1; 
+            // Format: .ptptremove [KODE] [NOMOR]
+            const rawBody = message.body.slice(11).trim();
+            const firstSpace = rawBody.indexOf(' ');
 
-            if (isNaN(targetIndex) || targetIndex < 0 || targetIndex >= 20) {
-                console.log(`[ADMIN] Invalid .ptptremove format`);
-                message.reply(`⚠️ *Format Salah!* Masukkan nomor urut yang valid (1-20).
-
-📝 *Format:*
-.ptptremove [Nomor Urut]
-
-✅ *Contoh:*
-.ptptremove 3`);
+            if (firstSpace === -1) {
+                message.reply('⚠️ Format: .ptptremove [KODE] [Nomor Urut]');
                 return;
             }
 
-            if (!fs.existsSync('./database_ptpt.json')) { return; }
+            const sessionCode = rawBody.substring(0, firstSpace).toUpperCase();
+            const targetIndex = parseInt(rawBody.substring(firstSpace + 1).trim()) - 1;
+
+            if (!fs.existsSync('./database_ptpt.json')) return;
 
             try {
                 const rawData = fs.readFileSync('./database_ptpt.json', 'utf8');
-                let ptptData = JSON.parse(rawData);
+                let allSessions = JSON.parse(rawData);
 
-                if (!ptptData.participants[targetIndex]) {
-                    message.reply('⚠️ Slot nomor itu sudah kosong.');
+                if (!allSessions[sessionCode]) {
+                    message.reply(`❌ Sesi ${sessionCode} tidak ditemukan.`);
                     return;
                 }
 
-                const removedName = ptptData.participants[targetIndex].name;
-                ptptData.participants.splice(targetIndex, 1);
+                let currentSession = allSessions[sessionCode];
 
-                fs.writeFileSync('./database_ptpt.json', JSON.stringify(ptptData));
-                message.reply(`✅ Sukses menghapus *${removedName}* dari list.`);
-                console.log(`[ADMIN] Removed member: ${removedName}`);
+                if (!currentSession.participants[targetIndex]) {
+                    message.reply('⚠️ Slot kosong.');
+                    return;
+                }
 
-            } catch (error) {
-                console.log('Error PTPT Remove:', error);
-                message.reply('❌ Gagal menghapus member.');
-            }
+                const removedName = currentSession.participants[targetIndex].name;
+                currentSession.participants.splice(targetIndex, 1);
+
+                allSessions[sessionCode] = currentSession;
+                fs.writeFileSync('./database_ptpt.json', JSON.stringify(allSessions));
+                message.reply(`✅ Sukses menghapus *${removedName}* dari sesi ${sessionCode}.`);
+
+            } catch (error) { message.reply('❌ Gagal menghapus.'); }
         }
 
-        // === 5. FITUR PTPT RESET (HAPUS SESI TOTAL) ===
-        if(msg === '.ptptreset') {
-            message.reply('⏳ _Menghapus sesi & mereset data PTPT..._');
-            try {
-                if(fs.existsSync('./database_ptpt.json')) fs.unlinkSync('./database_ptpt.json');
-                if(fs.existsSync('./ptpt_image.png')) fs.unlinkSync('./ptpt_image.png');
-                
-                message.reply('✅ *SUKSES!* Sesi PTPT telah ditutup dan data list dihapus.');
-                console.log(`[ADMIN] PTPT Session RESET/CLOSED`);
-            } catch (error) {
-                console.log('Error PTPT Reset:', error);
-                message.reply('❌ Gagal mereset sesi.');
+        // 5. RESET/DELETE SESSION
+        if(msg.startsWith('.ptptreset')) {
+            const rawBody = message.body.slice(10).trim();
+            
+            if (!rawBody) {
+                message.reply('⚠️ Masukkan Kode Sesi yg mau dihapus, atau "ALL" untuk hapus semua.');
+                return;
             }
+
+            const sessionCode = rawBody.toUpperCase();
+
+            if (!fs.existsSync('./database_ptpt.json')) {
+                message.reply('⚠️ Database sudah kosong.');
+                return;
+            }
+
+            try {
+                if (sessionCode === 'ALL') {
+                    fs.unlinkSync('./database_ptpt.json');
+                    if(fs.existsSync('./ptpt_image.png')) fs.unlinkSync('./ptpt_image.png');
+                    message.reply('✅ *SEMUA DATA SESI DIHAPUS BERSIH!*');
+                } else {
+                    const rawData = fs.readFileSync('./database_ptpt.json', 'utf8');
+                    let allSessions = JSON.parse(rawData);
+
+                    if (allSessions[sessionCode]) {
+                        delete allSessions[sessionCode]; // Hapus sesi spesifik
+                        fs.writeFileSync('./database_ptpt.json', JSON.stringify(allSessions));
+                        message.reply(`✅ Sesi *${sessionCode}* berhasil dihapus.`);
+                    } else {
+                        message.reply(`❌ Sesi ${sessionCode} tidak ditemukan.`);
+                    }
+                }
+            } catch (error) { message.reply('❌ Gagal reset.'); }
         }
     }
 });
