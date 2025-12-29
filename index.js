@@ -32,13 +32,6 @@ Pembayaran hanya valid jika dilakukan melalui *QRIS resmi* ini.
 Transfer melalui DM, link pribadi, atau QR lain = otomatis *dianggap tidak sah.*
 Segala bentuk salah transfer *bukan tanggung jawab admin.*`;
 
-// --- [GLOBAL] NOTE CARA PESAN ---
-const ORDER_NOTE = `
----------------------------------------
-Cara Bayar: ketik *.pay* untuk memunculkan QRIS payment.
-
-Note: Kirim bukti transfer di grup ini & jangan lupa tag adminnya ya 😙`;
-
 // --- SYARAT & KETENTUAN VILOG (MEMBER VIEW) ---
 const VILOG_TNC = `🔐 *INFORMASI LENGKAP VIA LOGIN (VILOG)* 🔐
 
@@ -69,8 +62,8 @@ Bingung mau ngapain? Cek daftar command di bawah ini:
 ✤ *.PAY*
 ✤ *.GIG*
 ✤ *.BOOSTER*
-✤ *.VILOG* (Via Login + TnC) ✅
-✤ *.PTPTLIST [KODE] [USN]* (Daftar Sesi)
+✤ *.VILOG* (Via Login + TnC) 
+✤ *.PTPTLIST [KODE] [USN]* (Daftar Sesi PTPT)
 ✤ *.PTPTUPDATE* (Cek Daftar Sesi Aktif)
 ✤ *.HELP*
 ✤ *.PING*`;
@@ -219,7 +212,12 @@ client.on('message', async (message) => {
 🗓️ *Tanggal Update:* ${displayDate}
 🕛 *Pukul:* ${displayTime} WIB
 
-Ini gig pricelist terbaru sesuai tanggal dan waktu update admin.${ORDER_NOTE}`;
+Ini gig pricelist terbaru sesuai tanggal dan waktu update admin.
+👇 *CARA PESAN:*
+Tag admin yang bersangkutan dan ketik *.pay* untuk memunculkan QRIS payment.
+
+📝 *NOTE:*
+Kirim bukti transfer di grup ini & jangan lupa tag adminnya ya 😙`;
 
         try {
             if (fs.existsSync('./pricelist.png')) {
@@ -244,7 +242,12 @@ Ini gig pricelist terbaru sesuai tanggal dan waktu update admin.${ORDER_NOTE}`;
 🗓️ *Tanggal Update:* ${displayDate}
 🕛 *Pukul:* ${displayTime} WIB
 
-Ini harga booster terbaru sesuai update admin.${ORDER_NOTE}`;
+Ini harga booster terbaru sesuai update admin.
+👇 *CARA PESAN:*
+Tag admin yang bersangkutan dan ketik *.pay* untuk memunculkan QRIS payment.
+
+📝 *NOTE:*
+Kirim bukti transfer di grup ini & jangan lupa tag adminnya ya 😙`;
 
         try {
             if (fs.existsSync('./pricelist_booster.png')) {
@@ -267,11 +270,18 @@ Ini harga booster terbaru sesuai update admin.${ORDER_NOTE}`;
             } catch (err) { }
         }
         
+        // Template Vilog dengan TnC Lengkap untuk Member
         const VILOG_TEMPLATE = `🔐 *VIA LOGIN PRICELIST* 🔐
 🗓️ *Tanggal Update:* ${displayDate}
 🕛 *Pukul:* ${displayTime} WIB
 
-${VILOG_TNC}${ORDER_NOTE}`;
+${VILOG_TNC}
+
+👇 *CARA PESAN:*
+Tag admin yang bersangkutan dan ketik *.pay* untuk memunculkan QRIS payment.
+
+📝 *NOTE:*
+Kirim bukti transfer di grup ini & jangan lupa tag adminnya ya 😙`;
 
         try {
             if (fs.existsSync('./pricelist_vilog.png')) {
@@ -363,7 +373,6 @@ ${VILOG_TNC}${ORDER_NOTE}`;
                 }
             }
 
-            // [UPDATE] TUTORIAL JOIN WITH HEADER
             const FINAL_TEMPLATE = `📢 SESSION INFO (${sessionCode})
 • Jenis: ${currentSession.sessionType}
 • Waktu: ${currentSession.timeInfo}
@@ -376,7 +385,12 @@ _List otomatis terupdate_ ✅
 
 *CARA JOIN???*
 _ketik : .ptptlist ${sessionCode} (username) untuk join!_
-${ORDER_NOTE}`;
+----------------------------
+Cara Bayar:
+Tag admin yang bersangkutan dan ketik *.pay* untuk memunculkan QRIS payment.
+
+Notes:
+Kirim bukti transfer di grup ini & jangan lupa tag adminnya ya 😙`;
 
             await message.reply(FINAL_TEMPLATE);
 
@@ -420,7 +434,6 @@ ${ORDER_NOTE}`;
                     }
                 }
 
-                // [UPDATE] TUTORIAL JOIN WITH HEADER
                 const DETAIL_TEMPLATE = `📢 SESSION INFO (${targetCode})
 • Jenis: ${currentSession.sessionType}
 • Waktu: ${currentSession.timeInfo}
@@ -433,7 +446,12 @@ _List otomatis terupdate_ ✅
 
 *CARA JOIN???*
 _ketik : .ptptlist ${targetCode} (username) untuk join!_
-${ORDER_NOTE}`;
+----------------------------
+Cara Bayar:
+Tag admin yang bersangkutan dan ketik *.pay* untuk memunculkan QRIS payment.
+
+Notes:
+Kirim bukti transfer di grup ini & jangan lupa tag adminnya ya 😙`;
                 
                 if (fs.existsSync('./ptpt_image.png')) {
                     await client.sendMessage(message.from, MessageMedia.fromFilePath('./ptpt_image.png'), { caption: DETAIL_TEMPLATE });
@@ -516,7 +534,7 @@ ${ORDER_NOTE}`;
              for(let p of chat.participants) { try{mentions.push(await client.getContactById(p.id._serialized))}catch(e){} }
              
              // --- TEMPLATE SERAGAM GIG (WITH NOTE) ---
-             const TPL = `📢 *GIG STOCK UPDATE!* 📢\n🗓️ ${date} | 🕛 ${time} WIB\n\n🔥 *READY STOCK!*${ORDER_NOTE}`;
+             const TPL = `📢 *GIG STOCK UPDATE!* 📢\n🗓️ ${date} | 🕛 ${time} WIB\n\n🔥 *READY STOCK!*\n\n👇 *CARA PESAN:*\nTag admin yang bersangkutan dan ketik *.pay* untuk memunculkan QRIS payment.\n\n📝 *NOTE:*\nKirim bukti transfer di grup ini & jangan lupa tag adminnya ya 😙`;
              
              if(fs.existsSync('./pricelist.png')) {
                  await chat.sendMessage(MessageMedia.fromFilePath('./pricelist.png'), { caption: TPL, mentions: mentions });
@@ -550,7 +568,7 @@ ${ORDER_NOTE}`;
              for(let p of chat.participants) { try{mentions.push(await client.getContactById(p.id._serialized))}catch(e){} }
              
              // --- TEMPLATE SERAGAM BOOSTER (WITH NOTE) ---
-             const TPL = `📢 *BOOSTER UPDATE!* 📢\n🗓️ ${date} | 🕛 ${time} WIB\n\n🔥 *OPEN SLOT!*${ORDER_NOTE}`;
+             const TPL = `📢 *BOOSTER UPDATE!* 📢\n🗓️ ${date} | 🕛 ${time} WIB\n\n🔥 *OPEN SLOT!*\n\n👇 *CARA PESAN:*\nTag admin yang bersangkutan dan ketik *.pay* untuk memunculkan QRIS payment.\n\n📝 *NOTE:*\nKirim bukti transfer di grup ini & jangan lupa tag adminnya ya 😙`;
              
              if(fs.existsSync('./pricelist_booster.png')) {
                  await chat.sendMessage(MessageMedia.fromFilePath('./pricelist_booster.png'), { caption: TPL, mentions: mentions });
@@ -585,7 +603,7 @@ ${ORDER_NOTE}`;
              for(let p of chat.participants) { try{mentions.push(await client.getContactById(p.id._serialized))}catch(e){} }
              
              // --- TEMPLATE SERAGAM VILOG (WITH NOTE) ---
-             const TPL = `📢 *VIA LOGIN (JOKI) UPDATE!* 📢\n🗓️ ${date} | 🕛 ${time} WIB\n\n🔥 *OPEN ORDER!*${ORDER_NOTE}`;
+             const TPL = `📢 *VIA LOGIN (JOKI) UPDATE!* 📢\n🗓️ ${date} | 🕛 ${time} WIB\n\n🔥 *OPEN ORDER!*\n\n👇 *CARA PESAN:*\nTag admin yang bersangkutan dan ketik *.pay* untuk memunculkan QRIS payment.\n\n📝 *NOTE:*\nKirim bukti transfer di grup ini & jangan lupa tag adminnya ya 😙`;
              
              if(fs.existsSync('./pricelist_vilog.png')) {
                  await chat.sendMessage(MessageMedia.fromFilePath('./pricelist_vilog.png'), { caption: TPL, mentions: mentions });
@@ -683,7 +701,6 @@ Jangan lupa tanda koma (,) untuk memisahkan Jenis dan Waktu!`);
                 let listText = '';
                 for (let i = 1; i <= 20; i++) listText += `${i}.\n`;
 
-                // [UPDATE] TUTORIAL JOIN WITH HEADER
                 const PTPT_TEMPLATE = `📢 SESSION INFO OPEN (${sessionCode})
 • Jenis: ${sessionType}
 • Waktu: ${timeInfo}
@@ -799,7 +816,6 @@ _ketik : .ptptlist ${sessionCode} (username) untuk join!_`;
                     }
                 }
 
-                // [UPDATE] TUTORIAL JOIN WITH HEADER
                 const PTPT_TEMPLATE = `📢 *PAYMENT CONFIRMED (${sessionCode})*
 • Jenis: ${currentSession.sessionType}
 • Waktu: ${currentSession.timeInfo}
@@ -809,7 +825,7 @@ USN Wa / USN rblox
 ${listText}
 _Terima kasih yang sudah lunas!_ ✅
 
-*CARA JOIN ???*
+*CARA JOIN???*
 _ketik : .ptptlist ${sessionCode} (username) untuk join!_`;
 
                 let mentions = [];
@@ -867,7 +883,7 @@ _ketik : .ptptlist ${sessionCode} (username) untuk join!_`;
             } catch (error) { message.reply('❌ Gagal menghapus.'); }
         }
 
-        // 5. RESET/DELETE SESSION
+        // 5. RESET/DELETE SESSION (FIX ROBUST)
         if(msg.startsWith('.ptptreset')) {
             const rawBody = message.body.slice(10).trim();
             
@@ -878,17 +894,18 @@ _ketik : .ptptlist ${sessionCode} (username) untuk join!_`;
 
             const sessionCode = rawBody.toUpperCase();
 
-            if (!fs.existsSync('./database_ptpt.json')) {
-                message.reply('⚠️ Database sudah kosong.');
-                return;
-            }
-
+            // FIXED: Langsung try-catch tanpa pre-check fs.existsSync di luar
             try {
                 if (sessionCode === 'ALL') {
-                    fs.unlinkSync('./database_ptpt.json');
+                    if(fs.existsSync('./database_ptpt.json')) fs.unlinkSync('./database_ptpt.json');
                     if(fs.existsSync('./ptpt_image.png')) fs.unlinkSync('./ptpt_image.png');
                     message.reply('✅ *SEMUA DATA SESI DIHAPUS BERSIH!*');
                 } else {
+                    if (!fs.existsSync('./database_ptpt.json')) {
+                        message.reply('⚠️ Database sudah kosong.');
+                        return;
+                    }
+
                     const rawData = fs.readFileSync('./database_ptpt.json', 'utf8');
                     let allSessions = JSON.parse(rawData);
 
@@ -900,7 +917,10 @@ _ketik : .ptptlist ${sessionCode} (username) untuk join!_`;
                         message.reply(`❌ Sesi ${sessionCode} tidak ditemukan.`);
                     }
                 }
-            } catch (error) { message.reply('❌ Gagal reset.'); }
+            } catch (error) { 
+                console.log('Reset Error:', error);
+                message.reply('❌ Gagal reset. Cek console.'); 
+            }
         }
     }
 });
