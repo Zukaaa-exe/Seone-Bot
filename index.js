@@ -62,9 +62,9 @@ Bingung mau ngapain? Cek daftar command di bawah ini:
 ✤ *.PAY*
 ✤ *.GIG*
 ✤ *.BOOSTER*
-✤ *.VILOG*      (Via Login + TnC) 
-✤ *.PTPTLIST  * (Daftar Sesi PTPT)
-✤ *.PTPTUPDATE* (Cek Daftar Sesi Aktif)
+✤ *.VILOG*       (Via Login + TnC) 
+✤ *.PTPTLIST*    (Daftar Sesi PTPT)
+✤ *.PTPTUPDATE*  (Cek Daftar Sesi Aktif)
 ✤ *.HELP*
 ✤ *.PING*`;
 
@@ -77,10 +77,10 @@ const HELP_ADMIN_ONLY = `
 ✤ *.VILOGUPDATE* 
 ✤ *.VILOGRESET*
 ✤ *.PTPTOPEN* (Buka Sesi Baru)
-✤ *.PTPTSET* (Edit Jam Sesi)
-✤ *.PTPTPAID* (Konfirmasi Bayar) ✅
+✤ *.PTPTSET*  (Edit Jam Sesi)
+✤ *.PTPTPAID* (Konfirmasi Bayar) 
 ✤ *.PTPTREMOVE* (Hapus Member)
-✤ *.PTPTRESET* (Tutup/Hapus Sesi)
+✤ *.PTPTRESET*  (Tutup/Hapus Sesi)
 ✤ *.P (teks)*`;
 
 const HELP_FOOTER = `
@@ -319,8 +319,8 @@ Kirim bukti transfer di grup ini & jangan lupa tag adminnya ya 😙`;
             // Jika formatnya .ptptlist [KODE] [USER]
             if (allSessions[sessionCode]) {
                 if(!actualUser) {
-                     message.reply(`⚠️ Masukkan username Roblox kamu setelah kode sesi!\nContoh: .ptptlist ${sessionCode} ProPlayer`);
-                     return;
+                      message.reply(`⚠️ Masukkan username Roblox kamu setelah kode sesi!\nContoh: .ptptlist ${sessionCode} ProPlayer`);
+                      return;
                 }
             } else {
                 // Jika format lama/langsung user (untuk single session, atau user bingung)
@@ -470,7 +470,8 @@ _ketik : .ptptlist ${targetCode} (username) untuk join!_`;
     }
 
     // --- AREA KHUSUS ADMIN ---
-    if(msg === '.gigupdate' || msg === '.gigreset' || msg === '.boosterupdate' || msg === '.boosterreset' || msg === '.vilogupdate' || msg === '.vilogreset' || msg === '.ptptreset' || msg.startsWith('.ptptopen') || msg.startsWith('.ptptset') || msg.startsWith('.ptptremove') || msg.startsWith('.ptptpaid') || msg === '.testgreet' || msg.startsWith('.p ')) {
+    // PERBAIKAN: Menggunakan startsWith untuk .ptptreset agar bisa menangkap argumen
+    if(msg === '.gigupdate' || msg === '.gigreset' || msg === '.boosterupdate' || msg === '.boosterreset' || msg === '.vilogupdate' || msg === '.vilogreset' || msg.startsWith('.ptptreset') || msg.startsWith('.ptptopen') || msg.startsWith('.ptptset') || msg.startsWith('.ptptremove') || msg.startsWith('.ptptpaid') || msg === '.testgreet' || msg.startsWith('.p ')) {
         
         if (!isUserAdmin(message)) {
             console.log(`[ALERT] Non-Admin tried to use admin command: ${msg}`);
@@ -871,7 +872,7 @@ _ketik : .ptptlist ${sessionCode} (username) untuk join!_`;
             } catch (error) { message.reply('❌ Gagal menghapus.'); }
         }
 
-        // 5. RESET/DELETE SESSION (FINAL FIX V55)
+        // 5. RESET/DELETE SESSION (FIXED)
         if(msg.startsWith('.ptptreset')) {
             const rawBody = message.body.slice(10).trim();
             const sessionCode = rawBody.toUpperCase();
