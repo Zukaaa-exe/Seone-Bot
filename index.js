@@ -68,9 +68,9 @@ Bingung mau ngapain? Cek daftar command di bawah ini:
 ✤ *.PAY*
 ✤ *.GIG*
 ✤ *.BOOSTER*
-✤ *.VILOG*       (Via Login + TnC) 
-✤ *.PTPTLIST   * (Daftar Sesi PTPT)
-✤ *.PTPTUPDATE * (Cek Daftar Sesi Aktif)
+✤ *.VILOG*       :Via Login + TnC
+✤ *.PTPTLIST*    :Join Sesi PTPT
+✤ *.PTPTUPDATE*  :Cek Daftar Sesi Aktif
 ✤ *.HELP*
 ✤ *.PING*`;
 
@@ -85,12 +85,12 @@ const HELP_ADMIN_ONLY = `
 ✤ *.VILOGUPDATE* 
 ✤ *.VILOGRESET* 
 ✤ *.VILOGCLOSE*
-✤ *.PTPTOPEN*  (Buka Sesi Baru)
-✤ *.PTPTCLOSE* (Tutup Sesi Biar Ga Ada yg Join)
-✤ *.PTPTSET*  (Edit Jam Sesi)
-✤ *.PTPTPAID* (Konfirmasi Bayar) ✅
-✤ *.PTPTREMOVE* (Hapus Member)
-✤ *.PTPTRESET*  (Tutup/Hapus Sesi)
+✤ *.PTPTOPEN*  :Buka Sesi Baru
+✤ *.PTPTCLOSE* :Tutup Sesi Biar Ga Ada yg Join
+✤ *.PTPTSET*   :Edit Jam Sesi
+✤ *.PTPTPAID*  :Konfirmasi Bayar 
+✤ *.PTPTREMOVE* :Hapus Member
+✤ *.PTPTRESET*  :Tutup/Hapus Sesi
 ✤ *.P (teks)*`;
 
 const HELP_FOOTER = `
