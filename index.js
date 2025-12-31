@@ -8,6 +8,26 @@ const BOT_START_TIME = Math.floor(Date.now() / 1000);
 let lastCommandTime = 0; 
 const COOLDOWN_IN_MS = 3000; // Delay 3 Detik
 
+// --- DATABASE SETTING (JOIN/LEAVE) ---
+// Default setting: Nyala (true)
+let BOT_SETTINGS = {
+    enableWelcome: true,
+    enableGoodbye: true
+};
+
+// Load settingan dari file biar permanen
+if (fs.existsSync('./bot_settings.json')) {
+    try {
+        BOT_SETTINGS = JSON.parse(fs.readFileSync('./bot_settings.json', 'utf8'));
+    } catch (e) { console.log('Gagal load setting, pakai default.', e); }
+} else {
+    fs.writeFileSync('./bot_settings.json', JSON.stringify(BOT_SETTINGS));
+}
+
+function saveSettings() {
+    fs.writeFileSync('./bot_settings.json', JSON.stringify(BOT_SETTINGS));
+}
+
 // --- KONFIGURASI ADMIN ---
 const LIST_ADMIN = [ 
     '273838558449745',    // ID User Linnn
@@ -68,14 +88,16 @@ Bingung mau ngapain? Cek daftar command di bawah ini:
 ✤ *.PAY*
 ✤ *.GIG*
 ✤ *.BOOSTER*
-✤ *.VILOG*       :Via Login + TnC
-✤ *.PTPTLIST*    :Join Sesi PTPT
-✤ *.PTPTUPDATE*  :Cek Daftar Sesi Aktif
+✤ *.VILOG* :Via Login + TnC
+✤ *.PTPTLIST* :Join Sesi PTPT
+✤ *.PTPTUPDATE* :Cek Daftar Sesi Aktif
 ✤ *.HELP*
 ✤ *.PING*`;
 
 const HELP_ADMIN_ONLY = `
 ---------ADMIN ONLY------------
+✤ *.JOIN ON/OFF* :Atur Auto Welcome
+✤ *.LEAVE ON/OFF* :Atur Auto Goodbye
 ✤ *.GIGUPDATE* 
 ✤ *.GIGRESET* 
 ✤ *.GIGCLOSE*
@@ -85,12 +107,12 @@ const HELP_ADMIN_ONLY = `
 ✤ *.VILOGUPDATE* 
 ✤ *.VILOGRESET* 
 ✤ *.VILOGCLOSE*
-✤ *.PTPTOPEN*  :Buka Sesi Baru
+✤ *.PTPTOPEN* :Buka Sesi Baru
 ✤ *.PTPTCLOSE* :Tutup Sesi Biar Ga Ada yg Join
-✤ *.PTPTSET*   :Edit Jam Sesi
-✤ *.PTPTPAID*  :Konfirmasi Bayar 
+✤ *.PTPTSET* :Edit Jam Sesi
+✤ *.PTPTPAID* :Konfirmasi Bayar 
 ✤ *.PTPTREMOVE* :Hapus Member
-✤ *.PTPTRESET*  :Tutup/Hapus Sesi
+✤ *.PTPTRESET* :Tutup/Hapus Sesi
 ✤ *.P (teks)*`;
 
 const HELP_FOOTER = `
@@ -170,6 +192,7 @@ async function kirimSapaanDenganGambar(chatTarget, contactToTag) {
 
 // Otak Bot
 client.on('message', async (message) => {
+    // === ANTI SPAM CHAT SAAT BOT MATI ===
     if (message.timestamp < BOT_START_TIME) return; 
 
     const msg = message.body.toLowerCase();
@@ -229,7 +252,6 @@ client.on('message', async (message) => {
             } catch (err) { }
         }
 
-        // Kalau statusnya CLOSED, kirim pesan ini
         if (isClosed) {
             const CLOSED_MSG = `🚫 *STOCK GIG KOSONG / TUTUP* 🚫
 
@@ -242,7 +264,6 @@ _Jangan sedih ya, nanti kita kabarin lagi kok 😙_`;
             return;
         }
 
-        // Kalau OPEN, kirim Pricelist Normal
         const GIG_TEMPLATE = `🛒 *GIG PRICELIST TERBARU* 🛒
 🗓️ *Tanggal Update:* ${displayDate}
 🕛 *Pukul:* ${displayTime} WIB
@@ -392,19 +413,16 @@ Kirim bukti transfer di grup ini & jangan lupa tag adminnya ya 😙`;
             const rawData = fs.readFileSync('./database_ptpt.json', 'utf8');
             let allSessions = JSON.parse(rawData);
 
-            // Periksa apakah user memasukkan kode sesi di awal
             const args = robloxUser.split(' ');
             let sessionCode = args[0].toUpperCase();
             let actualUser = args.slice(1).join(' ');
 
-            // Jika formatnya .ptptlist [KODE] [USER]
             if (allSessions[sessionCode]) {
                 if(!actualUser) {
                       message.reply(`⚠️ Masukkan username Roblox kamu setelah kode sesi!\nContoh: .ptptlist ${sessionCode} ProPlayer`);
                       return;
                 }
             } else {
-                // Jika format lama/langsung user
                 message.reply('⚠️ *Sesi tidak ditemukan atau Format Salah!* \nHarap sertakan Kode Sesi.\nContoh: `.ptptlist 24H Username`\n\nCek daftar sesi aktif dengan: `.ptptupdate`');
                 return;
             }
@@ -435,7 +453,7 @@ Kirim bukti transfer di grup ini & jangan lupa tag adminnya ya 😙`;
             const waName = contact.pushname || contact.number;
             const waNumber = contact.id._serialized;
 
-            // 4. Masukkan Data (Multi-slot Allowed per WA)
+            // 4. Masukkan Data
             currentSession.participants.push({
                 name: waName,
                 roblox: actualUser,
@@ -501,7 +519,6 @@ _ketik : .ptptlist ${sessionCode} (username) untuk join!_${PTPT_FOOTER}`;
                 return;
             }
 
-            // A. Jika user mengetik KODE SPESIFIK -> Tampilkan List Detail
             if (targetCode && allSessions[targetCode]) {
                 let currentSession = allSessions[targetCode];
                 let listText = '';
@@ -515,7 +532,6 @@ _ketik : .ptptlist ${sessionCode} (username) untuk join!_${PTPT_FOOTER}`;
                     }
                 }
 
-                // Cek status Closed untuk tampilan
                 let statusText = `OPEN (${currentSession.participants.length}/20)`;
                 if (currentSession.isClosed) {
                     statusText = `CLOSED (DITUTUP ADMIN)`;
@@ -543,7 +559,6 @@ _ketik : .ptptlist ${targetCode} (username) untuk join!_${PTPT_FOOTER}`;
                 }
 
             } else {
-                // B. Jika user HANYA mengetik .ptptupdate -> Tampilkan Ringkasan Semua Sesi
                 let summaryText = `📋 *DAFTAR SESI AKTIF SAAT INI:*\n\n`;
                 
                 sessionKeys.forEach(code => {
@@ -567,7 +582,8 @@ _ketik : .ptptlist ${targetCode} (username) untuk join!_${PTPT_FOOTER}`;
     }
 
     // --- AREA KHUSUS ADMIN ---
-    if(msg === '.gigupdate' || msg === '.gigreset' || msg === '.gigclose' || 
+    if(msg === '.join on' || msg === '.join off' || msg === '.leave on' || msg === '.leave off' ||
+       msg === '.gigupdate' || msg === '.gigreset' || msg === '.gigclose' || 
        msg === '.boosterupdate' || msg === '.boosterreset' || msg === '.boosterclose' || 
        msg === '.vilogupdate' || msg === '.vilogreset' || msg === '.vilogclose' ||
        msg.startsWith('.ptptreset') || msg.startsWith('.ptptopen') || msg.startsWith('.ptptclose') || msg.startsWith('.ptptset') || msg.startsWith('.ptptremove') || msg.startsWith('.ptptpaid') || msg === '.testgreet' || msg.startsWith('.p ')) {
@@ -576,6 +592,31 @@ _ketik : .ptptlist ${targetCode} (username) untuk join!_${PTPT_FOOTER}`;
             console.log(`[ALERT] Non-Admin tried to use admin command: ${msg}`);
             message.reply('kamu bukan admin, jangan coba-coba ya dek yaaa😙'); 
             return; 
+        }
+
+        // ==========================================
+        // FITUR ON/OFF WELCOME & GOODBYE (NEW)
+        // ==========================================
+        if (msg === '.join on') {
+            BOT_SETTINGS.enableWelcome = true;
+            saveSettings();
+            message.reply('✅ Fitur *Auto Welcome (Join)* diaktifkan.');
+        }
+        if (msg === '.join off') {
+            BOT_SETTINGS.enableWelcome = false;
+            saveSettings();
+            message.reply('🚫 Fitur *Auto Welcome (Join)* dimatikan.');
+        }
+
+        if (msg === '.leave on') {
+            BOT_SETTINGS.enableGoodbye = true;
+            saveSettings();
+            message.reply('✅ Fitur *Auto Goodbye (Leave)* diaktifkan.');
+        }
+        if (msg === '.leave off') {
+            BOT_SETTINGS.enableGoodbye = false;
+            saveSettings();
+            message.reply('🚫 Fitur *Auto Goodbye (Leave)* dimatikan.');
         }
 
         if(msg === '.testgreet') {
@@ -587,13 +628,7 @@ _ketik : .ptptlist ${targetCode} (username) untuk join!_${PTPT_FOOTER}`;
         if(msg.startsWith('.p ')) {
             const textToSend = message.body.slice(3).trim();
             if(!textToSend) {
-                message.reply(`⚠️ *Format Salah!* Masukkan teks broadcast.
-
-📝 *Format:*
-.p [Pesan Kamu]
-
-✅ *Contoh:*
-.p Halo semua, mabar yuk!`);
+                message.reply(`⚠️ *Format Salah!*`);
                 return;
             }
             try {
@@ -610,12 +645,11 @@ _ketik : .ptptlist ${targetCode} (username) untuk join!_${PTPT_FOOTER}`;
         }
 
         // ==========================================
-        // GIG ADMIN (UPDATE, RESET, CLOSE)
+        // GIG ADMIN
         // ==========================================
         if(msg === '.gigupdate') {
              const chat = await message.getChat();
              const { date, time } = getWaktuIndonesia();
-             // Reset status 'CLOSED' jadi 'OPEN' secara implisit dengan menyimpan data baru
              fs.writeFileSync('./database_update.json', JSON.stringify({ date, time, status: 'OPEN' }));
              if (message.hasMedia) {
                 const media = await message.downloadMedia();
@@ -634,7 +668,6 @@ _ketik : .ptptlist ${targetCode} (username) untuk join!_${PTPT_FOOTER}`;
 
         if(msg === '.gigclose') {
             const { date, time } = getWaktuIndonesia();
-            // Simpan status CLOSED
             fs.writeFileSync('./database_update.json', JSON.stringify({ date, time, status: 'CLOSED' }));
             message.reply('⛔ *GIG CLOSED!* Status GIG sekarang: HABIS/TUTUP. Member akan melihat pesan stok habis.');
         }
@@ -644,15 +677,12 @@ _ketik : .ptptlist ${targetCode} (username) untuk join!_${PTPT_FOOTER}`;
             try {
                 if(fs.existsSync('./database_update.json')) fs.unlinkSync('./database_update.json');
                 if(fs.existsSync('./pricelist.png')) fs.unlinkSync('./pricelist.png');
-                
                 message.reply('✅ *SUKSES!* Data GIG telah direset. (Member akan melihat "Belum ada update")');
-            } catch (error) {
-                message.reply('❌ Gagal mereset data GIG.');
-            }
+            } catch (error) { message.reply('❌ Gagal mereset data GIG.'); }
         }
 
         // ==========================================
-        // BOOSTER ADMIN (UPDATE, RESET, CLOSE)
+        // BOOSTER ADMIN
         // ==========================================
         if(msg === '.boosterupdate') {
              const chat = await message.getChat();
@@ -685,13 +715,11 @@ _ketik : .ptptlist ${targetCode} (username) untuk join!_${PTPT_FOOTER}`;
                 if(fs.existsSync('./database_booster.json')) fs.unlinkSync('./database_booster.json');
                 if(fs.existsSync('./pricelist_booster.png')) fs.unlinkSync('./pricelist_booster.png');
                 message.reply('✅ *SUKSES!* Data Booster telah direset.');
-            } catch (error) {
-                message.reply('❌ Gagal mereset data Booster.');
-            }
+            } catch (error) { message.reply('❌ Gagal mereset data Booster.'); }
         }
 
         // ==========================================
-        // VILOG ADMIN (UPDATE, RESET, CLOSE)
+        // VILOG ADMIN
         // ==========================================
         if(msg === '.vilogupdate') {
              const chat = await message.getChat();
@@ -725,42 +753,19 @@ _ketik : .ptptlist ${targetCode} (username) untuk join!_${PTPT_FOOTER}`;
                 if(fs.existsSync('./database_vilog.json')) fs.unlinkSync('./database_vilog.json');
                 if(fs.existsSync('./pricelist_vilog.png')) fs.unlinkSync('./pricelist_vilog.png');
                 message.reply('✅ *SUKSES!* Data Vilog telah direset.');
-            } catch (error) { 
-                message.reply('❌ Gagal mereset data Vilog.'); 
-            }
+            } catch (error) { message.reply('❌ Gagal mereset data Vilog.'); }
         }
 
         // =========================================================
         // === ADMIN PTPT MULTI-SESSION MANAGEMENT ===
         // =========================================================
 
-        // 1. OPEN SESI
         if(msg.startsWith('.ptptopen')) {
             const rawBody = message.body.slice(9).trim(); 
             const firstSpace = rawBody.indexOf(' ');
             
-            // CHECK & OUTPUT TUTORIAL (REVISI V45)
             if (firstSpace === -1) {
-                message.reply(`⚠️ *PANDUAN MEMBUKA SESI PTPT* ⚠️
-
-Untuk membuka sesi baru, gunakan format berikut dengan teliti:
-
-📝 *FORMAT COMMAND:*
-.ptptopen [KODE] [JENIS SESI], [INFO WAKTU]
-
-📌 *KETERANGAN:*
-• *KODE*: Identitas unik sesi (Contoh: 24H, 9H, VIP).
-• *JENIS*: Durasi atau tipe sesi (Contoh: 12 Jam, 6 Jam).
-• *WAKTU*: Jadwal mulai dan selesai.
-
-✅ *CONTOH 1 (Jadwal Fix):*
-.ptptopen 24H 12 Jam, 30 Des 20.00 - 08.00 WIB
-
-✅ *CONTOH 2 (Jadwal TBA):*
-.ptptopen 9H 6 Jam, TBA (Menunggu Info)
-
-⚠️ *PENTING:*
-Jangan lupa tanda koma (,) untuk memisahkan Jenis dan Waktu!`);
+                message.reply(`⚠️ *FORMAT SALAH!* Lihat .help admin`);
                 return;
             }
 
@@ -783,16 +788,14 @@ Jangan lupa tanda koma (,) untuk memisahkan Jenis dan Waktu!`);
                     try {
                         const fileContent = fs.readFileSync('./database_ptpt.json', 'utf8');
                         const parsed = JSON.parse(fileContent);
-                        if (!Array.isArray(parsed)) {
-                            allSessions = parsed;
-                        }
+                        if (!Array.isArray(parsed)) allSessions = parsed;
                     } catch(e) {}
                 }
 
                 allSessions[sessionCode] = {
                     sessionType: sessionType,
                     timeInfo: timeInfo,
-                    isClosed: false, // Default: OPEN
+                    isClosed: false,
                     participants: []
                 };
 
@@ -830,19 +833,15 @@ _ketik : .ptptlist ${sessionCode} (username) untuk join!_${PTPT_FOOTER}`;
                 }
                 console.log(`[ADMIN] Opened Session: ${sessionCode}`);
 
-            } catch (error) {
-                console.log('Error PTPT Open:', error);
-                message.reply('❌ Gagal membuka sesi PTPT.');
-            }
+            } catch (error) { message.reply('❌ Gagal membuka sesi PTPT.'); }
         }
 
-        // 1.5 CLOSE SESI (NEW!)
         if(msg.startsWith('.ptptclose')) {
             const rawBody = message.body.slice(10).trim();
             const sessionCode = rawBody.toUpperCase();
 
             if (!sessionCode) {
-                message.reply('⚠️ Format: `.ptptclose [KODE]`\nContoh: `.ptptclose 24H`');
+                message.reply('⚠️ Format: `.ptptclose [KODE]`');
                 return;
             }
 
@@ -857,16 +856,13 @@ _ketik : .ptptlist ${sessionCode} (username) untuk join!_${PTPT_FOOTER}`;
                     return;
                 }
 
-                // Set status closed
                 allSessions[sessionCode].isClosed = true;
-                
                 fs.writeFileSync('./database_ptpt.json', JSON.stringify(allSessions));
                 message.reply(`⛔ Sesi *${sessionCode}* berhasil DITUTUP. Member tidak bisa join lagi.`);
 
             } catch (error) { message.reply('❌ Gagal menutup sesi.'); }
         }
 
-        // 2. SET/EDIT SESI
         if(msg.startsWith('.ptptset')) {
             const rawBody = message.body.slice(8).trim();
             const firstSpace = rawBody.indexOf(' ');
@@ -897,7 +893,6 @@ _ketik : .ptptlist ${sessionCode} (username) untuk join!_${PTPT_FOOTER}`;
             } catch (error) { message.reply('❌ Gagal update.'); }
         }
 
-        // 3. PAID CONFIRMATION
         if(msg.startsWith('.ptptpaid')) {
             const rawBody = message.body.slice(9).trim();
             const firstSpace = rawBody.indexOf(' ');
@@ -978,7 +973,6 @@ _ketik : .ptptlist ${sessionCode} (username) untuk join!_${PTPT_FOOTER}`;
             } catch (error) { console.log(error); message.reply('❌ Error confirming payment.'); }
         }
 
-        // 4. REMOVE MEMBER
         if(msg.startsWith('.ptptremove')) {
             const rawBody = message.body.slice(11).trim();
             const firstSpace = rawBody.indexOf(' ');
@@ -1019,68 +1013,52 @@ _ketik : .ptptlist ${sessionCode} (username) untuk join!_${PTPT_FOOTER}`;
             } catch (error) { message.reply('❌ Gagal menghapus.'); }
         }
 
-        // 5. RESET/DELETE SESSION
         if(msg.startsWith('.ptptreset')) {
             const rawBody = message.body.slice(10).trim();
             const sessionCode = rawBody.toUpperCase();
 
-            // Cek Input Kosong
             if (!sessionCode) {
-                message.reply('⚠️ Format salah! Ketik `.ptptreset all` (hapus semua) atau `.ptptreset [KODE]` (hapus satu).');
+                message.reply('⚠️ Format salah! Ketik `.ptptreset all` atau `.ptptreset [KODE]`.');
                 return;
             }
 
             try {
-                // OPSI 1: RESET ALL (HAPUS TOTAL)
                 if (sessionCode === 'ALL') {
                     let success = false;
-                    // Hapus Database JSON
                     if (fs.existsSync('./database_ptpt.json')) {
                         fs.unlinkSync('./database_ptpt.json');
                         success = true;
                     }
-                    // Hapus Gambar
                     if (fs.existsSync('./ptpt_image.png')) {
                         fs.unlinkSync('./ptpt_image.png');
                     }
                     
-                    if (success) {
-                        message.reply('✅ Sukses! Semua sesi PTPT telah dihapus bersih.');
-                    } else {
-                        message.reply('⚠️ Database sudah kosong, tidak ada yang perlu dihapus.');
-                    }
+                    if (success) message.reply('✅ Sukses! Semua sesi PTPT telah dihapus bersih.');
+                    else message.reply('⚠️ Database sudah kosong.');
                 } 
-                // OPSI 2: RESET SPESIFIK (HAPUS KODE)
                 else {
                     if (!fs.existsSync('./database_ptpt.json')) {
-                        message.reply('⚠️ Gagal: Database kosong (Belum ada sesi).');
+                        message.reply('⚠️ Gagal: Database kosong.');
                         return;
                     }
-
-                    // Baca File dengan Safety Check (Anti Corrupt)
                     let allSessions = {};
                     try {
                         const rawData = fs.readFileSync('./database_ptpt.json', 'utf8');
                         allSessions = JSON.parse(rawData);
                     } catch (err) {
-                        // Jika JSON rusak, tawarkan reset all
-                        message.reply('⚠️ Error: Database rusak/corrupt. Harap lakukan *.ptptreset all* untuk memperbaikinya.');
+                        message.reply('⚠️ Error: Database rusak/corrupt.');
                         return;
                     }
 
-                    // Cek Apakah Kodenya Ada?
                     if (allSessions[sessionCode]) {
-                        delete allSessions[sessionCode]; // Hapus key
-                        
-                        // Cek jika habis dihapus jadi kosong, hapus file sekalian biar bersih
+                        delete allSessions[sessionCode];
                         if (Object.keys(allSessions).length === 0) {
                             fs.unlinkSync('./database_ptpt.json');
                             if(fs.existsSync('./ptpt_image.png')) fs.unlinkSync('./ptpt_image.png');
-                            message.reply(`✅ Sesi *${sessionCode}* dihapus. Database kini kosong (file dihapus).`);
+                            message.reply(`✅ Sesi *${sessionCode}* dihapus. Database kini kosong.`);
                         } else {
-                            // Simpan sisa sesi
                             fs.writeFileSync('./database_ptpt.json', JSON.stringify(allSessions));
-                            message.reply(`✅ Sesi *${sessionCode}* berhasil dihapus dari database.`);
+                            message.reply(`✅ Sesi *${sessionCode}* berhasil dihapus.`);
                         }
                     } else {
                         message.reply(`❌ Gagal: Sesi dengan kode *${sessionCode}* tidak ditemukan.`);
@@ -1088,7 +1066,7 @@ _ketik : .ptptlist ${sessionCode} (username) untuk join!_${PTPT_FOOTER}`;
                 }
             } catch (error) {
                 console.log('Reset Error:', error);
-                message.reply('❌ Terjadi error sistem saat reset. Cek console.');
+                message.reply('❌ Terjadi error sistem saat reset.');
             }
         }
     }
@@ -1096,6 +1074,12 @@ _ketik : .ptptlist ${sessionCode} (username) untuk join!_${PTPT_FOOTER}`;
 
 // === AUTO WELCOME (JOIN) ===
 client.on('group_join', async (notification) => {
+    // 1. CEK TIMESTAMP (ANTI SPAM SAAT BARU NYALA)
+    if (notification.timestamp && notification.timestamp < BOT_START_TIME) return;
+
+    // 2. CEK SETTINGAN (ON/OFF)
+    if (!BOT_SETTINGS.enableWelcome) return;
+
     try {
         const chat = await notification.getChat();
         const contact = await client.getContactById(notification.recipientIds[0]); 
@@ -1106,6 +1090,12 @@ client.on('group_join', async (notification) => {
 
 // === AUTO GOODBYE (LEAVE) - LUCU ===
 client.on('group_leave', async (notification) => {
+    // 1. CEK TIMESTAMP (ANTI SPAM SAAT BARU NYALA)
+    if (notification.timestamp && notification.timestamp < BOT_START_TIME) return;
+
+    // 2. CEK SETTINGAN (ON/OFF)
+    if (!BOT_SETTINGS.enableGoodbye) return;
+
     try {
         const chat = await notification.getChat();
         const contact = await client.getContactById(notification.recipientIds[0]);
