@@ -211,17 +211,15 @@ client.on('message', async (message) => {
 
     // === FITUR LIST ADMIN BARU ===
     if(msg === '.admin') {
-        const ADMIN_INFO = `👮‍♂️ *LIST ADMIN SEONE STORE* 👮‍♂️
-
+        const ADMIN_INFO = `*LIST ADMIN SEONE STORE* 
+-------------------------------
 *1. Zuka*
-✦ 081361232066
-
+✦ 08116162614
 *2. Linnn*
 ✦ 081260809729
-
 *3. Genky*
 ✦ 082185523432
-
+-------------------------------
 _Jika ada kendala mendesak, silakan hubungi admin di atas. Harap chat dengan sopan, no spam, no call!_ 😉`;
         message.reply(ADMIN_INFO);
     }
