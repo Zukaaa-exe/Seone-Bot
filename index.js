@@ -195,7 +195,14 @@ client.on('message', async (message) => {
     } else { return; }
 
     // --- COMMAND MEMBER ---
-    if(msg === '.ping') message.reply('pong');
+    if(msg === '.ping') {
+        // Ambil waktu pesan dikirim (dikali 1000 karena timestamp WA dalam detik)
+        const messageTimestamp = message.timestamp * 1000; 
+        const currentTimestamp = Date.now();
+        const latency = currentTimestamp - messageTimestamp;
+        
+        message.reply(`Pong! 🏓\nKecepatan Respon: *${latency}ms*`);
+    }
     
     if(msg === '.help') {
         if (isUserAdmin(message)) message.reply(HELP_MEMBER + HELP_ADMIN_ONLY + HELP_FOOTER);
