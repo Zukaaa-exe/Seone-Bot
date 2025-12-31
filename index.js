@@ -201,7 +201,7 @@ client.on('message', async (message) => {
         const currentTimestamp = Date.now();
         const latency = currentTimestamp - messageTimestamp;
         
-        message.reply(`Pong! 🏓\nKecepatan Respon: *${latency}ms*`);
+        message.reply(`Pong! 🏓\n${latency}ms`);
     }
     
     if(msg === '.help') {
