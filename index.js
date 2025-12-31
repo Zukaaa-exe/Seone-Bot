@@ -214,7 +214,7 @@ client.on('message', async (message) => {
         const ADMIN_INFO = `*LIST ADMIN SEONE STORE* 
 -------------------------------
 *1. Zuka*
-✦ 08116162614
+✦ 081161626164
 *2. Linnn*
 ✦ 081260809729
 *3. Genky*
