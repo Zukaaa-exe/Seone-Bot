@@ -5,8 +5,9 @@ const fs = require('fs');
 // --- PENGATURAN WAKTU & SPAM ---
 const BOT_START_TIME = Math.floor(Date.now() / 1000);
 
-let lastCommandTime = 0; 
-const COOLDOWN_IN_MS = 3000; // Delay 3 Detik
+// Menggunakan Map untuk menyimpan waktu cooldown per user
+const cooldowns = new Map();
+const COOLDOWN_IN_MS = 3000; // Delay 3 Detik per user
 
 // --- DATABASE SETTING (JOIN/LEAVE) ---
 let BOT_SETTINGS = { enableWelcome: true, enableGoodbye: true };
@@ -183,15 +184,25 @@ client.on('message', async (message) => {
 
     const msg = message.body.toLowerCase();
 
-    // COOLDOWN
+    // COOLDOWN PER USER (Smart Logic)
     if (msg.startsWith('.')) {
-        const currentTime = Date.now();
-        const timeDiff = currentTime - lastCommandTime;
-        if (timeDiff < COOLDOWN_IN_MS) {
-            message.reply('uupppssss, seseorang baru saja menggunakan command. tunggu 3detik lagi');
-            return; 
+        const sender = message.from; // ID pengirim (misal: 62812xxx@c.us)
+        const now = Date.now();
+        
+        if (cooldowns.has(sender)) {
+            const expirationTime = cooldowns.get(sender) + COOLDOWN_IN_MS;
+            if (now < expirationTime) {
+                // Opsional: Reply atau diamkan saja biar ga spam
+                // message.reply('⏳ Tunggu bentar bang, jangan spam!'); 
+                return; 
+            }
         }
-        lastCommandTime = currentTime;
+        
+        // Simpan waktu user ini mengetik command
+        cooldowns.set(sender, now);
+        
+        // Bersihkan data user dari memori setelah cooldown selesai (biar RAM hemat)
+        setTimeout(() => cooldowns.delete(sender), COOLDOWN_IN_MS);
     } else { return; }
 
     // --- COMMAND MEMBER ---
