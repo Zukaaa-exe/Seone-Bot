@@ -1,34 +1,56 @@
 const { Client, LocalAuth, MessageMedia } = require('whatsapp-web.js');
 const qrcode = require('qrcode-terminal');
-const fs = require('fs'); 
+const fs = require('fs').promises; // Pakai versi Async (Anti-Lag)
+const fsSync = require('fs');      // Untuk cek file ada/tidak saja
 
-// --- PENGATURAN WAKTU & SPAM ---
+// --- KONFIGURASI UTAMA ---
 const BOT_START_TIME = Math.floor(Date.now() / 1000);
-
-// Menggunakan Map untuk menyimpan waktu cooldown per user
+const COOLDOWN_IN_MS = 3000;
 const cooldowns = new Map();
-const COOLDOWN_IN_MS = 3000; // Delay 3 Detik per user
 
-// --- DATABASE SETTING (JOIN/LEAVE) ---
-let BOT_SETTINGS = { enableWelcome: true, enableGoodbye: true };
+// --- DATABASE IN-MEMORY (RAM) ---
+// Data dimuat ke sini biar ngebut, gak baca file terus-terusan
+let DB = {
+    config: { welcome: true, goodbye: true },
+    shop_status: {}, // GIG, BOOSTER, VILOG
+    ptpt_sessions: {},
+    admins: [ 
+        '273838558449745', '256723633852445', '189601952063685' 
+    ]
+};
 
-if (fs.existsSync('./bot_settings.json')) {
-    try { BOT_SETTINGS = JSON.parse(fs.readFileSync('./bot_settings.json', 'utf8')); } 
-    catch (e) { console.log('Gagal load setting, pakai default.', e); }
-} else { fs.writeFileSync('./bot_settings.json', JSON.stringify(BOT_SETTINGS)); }
+const DB_FILE = './database_v2.json';
 
-function saveSettings() { fs.writeFileSync('./bot_settings.json', JSON.stringify(BOT_SETTINGS)); }
+// --- FUNGSI DATABASE PINTAR ---
+// 1. Load Database saat Start
+async function loadDatabase() {
+    if (fsSync.existsSync(DB_FILE)) {
+        try {
+            const raw = await fs.readFile(DB_FILE, 'utf8');
+            DB = { ...DB, ...JSON.parse(raw) }; // Gabung default + data file
+            console.log('✅ Database dimuat ke Memory (RAM).');
+        } catch (e) {
+            console.error('❌ Gagal baca DB, membuat baru...', e);
+            saveDatabase();
+        }
+    } else {
+        console.log('📝 Membuat database baru...');
+        saveDatabase();
+    }
+}
 
-// --- KONFIGURASI ADMIN (Auth) ---
-// ID ini untuk akses command admin (pastikan ID-nya benar sesuai WA masing-masing)
-const LIST_ADMIN = [ 
-    '273838558449745',    // ID User Linnn
-    '256723633852445',    // ID User Genky
-    '189601952063685'     // ID User Hayyu/Zuka
-];
+// 2. Save Database (Async - Tidak Bikin Lag)
+async function saveDatabase() {
+    try {
+        await fs.writeFile(DB_FILE, JSON.stringify(DB, null, 2));
+    } catch (e) {
+        console.error('❌ Gagal menyimpan DB:', e);
+    }
+}
 
-// --- DATABASE PESAN & TEMPLATE ---
-const SEONE_MSG_BODY = `*SeoneStore.ID* ✅Murah, Aman & Trusted 100%
+// --- TEMPLATES ---
+const SEONE_MSG_BODY = `*SeoneStore.ID* 
+✅Murah, Aman & Trusted 100%
 
 ⚡ Proses Cepat (1-10 Menit)
 💳 Bayar via : Qris
@@ -43,32 +65,25 @@ Pembayaran hanya valid jika dilakukan melalui *QRIS resmi* ini.
 Transfer melalui DM, link pribadi, atau QR lain = otomatis *dianggap tidak sah.*
 Segala bentuk salah transfer *bukan tanggung jawab admin.*`;
 
-const PTPT_FOOTER = `
--------------------------------
-cara bayar: ketik *.pay* untuk memunculkan qris
-note: jangan lupa kirim buktinya ke sini dan tag admin juga ya😙`;
-
 const VILOG_TNC = `🔐 *INFORMASI LENGKAP VIA LOGIN (VILOG)* 🔐
 
 1️⃣ *CARA KERJA:*
-• Pembeli: Memberikan Username dan Password (terkadang butuh kode verifikasi 2 langkah atau kode backup).
+• Pembeli: Memberikan Username dan Password.
 • Admin akan login ke akunmu untuk memproses topup secara manual.
-• Selesai: Setelah Robux masuk, penjual akan logout (keluar) dari akun tersebut.
+• Selesai: Admin logout.
 
 2️⃣ *KEAMANAN & RISIKO:*
-• Tenang, data akunmu dijamin *AMAN 100% & PRIVASI TERJAGA* di tangan kami.
-• Namun, sebagai standar keamanan digital yang baik, kami *SANGAT MENYARANKAN* agar kamu segera *Ganti Password* setelah pesanan selesai.
-• Ini bukan untuk menakuti, tapi demi kenyamanan bersama dan agar hati kamu tenang! 😉🛡️
+• Tenang, data akunmu dijamin *AMAN 100% & PRIVASI TERJAGA*.
+• Kami *SANGAT MENYARANKAN* segera *Ganti Password* setelah pesanan selesai.
 
 3️⃣ *PERSETUJUAN:*
-• Dengan melakukan pembayaran, berarti kamu *SETUJU* dengan semua prosedur di atas.
+• Dengan melakukan pembayaran, berarti kamu *SETUJU*.
 
 4️⃣ *PENGIRIMAN DATA:*
-• Silakan kirim Username & Password *HANYA MELALUI DM/JAPRI* ke Admin yang bersangkutan secara langsung.
-• ❌ Jangan pernah kirim data akun di Grup!
+• Kirim Username & Password *HANYA MELALUI DM/JAPRI* ke Admin.
+• ❌ Jangan kirim data akun di Grup!
 
-# *INGAT! ADMIN NEVER DM FIRST!* 🚫
-_(Admin tidak akan pernah chat kamu duluan untuk minta data/uang)_`;
+# *INGAT! ADMIN NEVER DM FIRST!* 🚫`;
 
 // === MENU HELP ===
 const HELP_MEMBER = `🛠️ *BANTUAN SEONE STORE* 🛠️
@@ -98,11 +113,11 @@ const HELP_ADMIN_ONLY = `
 ✤ *.VILOGRESET* 
 ✤ *.VILOGCLOSE*
 ✤ *.PTPTOPEN* :Buka Sesi Baru
-✤ *.PTPTCLOSE* :Tutup Sesi Biar Ga Ada yg Join
+✤ *.PTPTCLOSE* :Tutup Sesi
 ✤ *.PTPTSET* :Edit Jam Sesi
 ✤ *.PTPTPAID* :Konfirmasi Bayar 
 ✤ *.PTPTREMOVE* :Hapus Member
-✤ *.PTPTRESET* :Tutup/Hapus Sesi
+✤ *.PTPTRESET* :Hapus Sesi
 ✤ *.P (teks)*`;
 
 const HELP_FOOTER = `
@@ -113,27 +128,24 @@ const client = new Client({
     authStrategy: new LocalAuth(),
     puppeteer: {
         executablePath: '/data/data/com.termux/files/usr/bin/chromium-browser',
-        args: [
-            '--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage',
-            '--disable-accelerated-2d-canvas', '--no-first-run', '--no-zygote', '--single-process'
-        ],
+        args: [ '--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage', '--disable-accelerated-2d-canvas', '--no-first-run', '--no-zygote', '--single-process' ]
     }
 });
 
 client.on('qr', (qr) => { qrcode.generate(qr, { small: true }); console.log('Scan QR Code...'); });
-client.on('ready', () => { console.log('Mantap! Bot sudah ONLINE dan siap tempur!'); });
+client.on('ready', async () => { 
+    console.log('Mantap! Bot sudah ONLINE dan siap tempur!');
+    await loadDatabase(); // Load data dulu sebelum terima pesan
+});
 
 // --- FUNGSI BANTUAN (HELPER) ---
 
 function isUserAdmin(msg) {
-    let userID = null;
-    if (msg.from.includes('@g.us')) {
-        if (msg.author) userID = msg.author.split('@')[0].split(':')[0];
-    } else {
-        userID = msg.from.split('@')[0];
-    }
-    if (LIST_ADMIN.includes(userID)) return true;
-    return false;
+    let userID = (msg.author || msg.from).replace('@c.us', '').replace('@g.us', ''); 
+    if(msg.from.includes('@g.us') && msg.author) userID = msg.author.split('@')[0];
+    else userID = msg.from.split('@')[0];
+    
+    return DB.admins.includes(userID);
 }
 
 function getWaktuIndonesia() {
@@ -143,16 +155,24 @@ function getWaktuIndonesia() {
     return { date: now.toLocaleDateString('id-ID', optionsDate), time: now.toLocaleTimeString('id-ID', optionsTime) };
 }
 
-// === HELPER SAKTI: AMBIL SEMUA MEMBER CEPAT (PARALEL) ===
+// Helper: Ambil semua member (Paralel)
 async function getMentionsAll(chat) {
-    const mentions = await Promise.all(chat.participants.map(async (participant) => {
-        try {
-            return await client.getContactById(participant.id._serialized);
-        } catch (e) {
-            return null;
-        }
+    const mentions = await Promise.all(chat.participants.map(async (p) => {
+        try { return await client.getContactById(p.id._serialized); } catch { return null; }
     }));
-    return mentions.filter(contact => contact !== null);
+    return mentions.filter(c => c !== null);
+}
+
+// Helper: Kirim Pesan dengan Retry (Anti Gagal)
+async function sendMessageWithRetry(target, content, options = {}, retries = 3) {
+    try {
+        await target.sendMessage(content, options);
+    } catch (error) {
+        if (retries > 0) {
+            await new Promise(r => setTimeout(r, 1000));
+            await sendMessageWithRetry(target, content, options, retries - 1);
+        }
+    }
 }
 
 async function kirimSapaanDenganGambar(chatTarget, contactToTag) {
@@ -169,470 +189,365 @@ async function kirimSapaanDenganGambar(chatTarget, contactToTag) {
     }
     options.caption = finalCaption;
 
-    if (picUrl) {
-        const media = await MessageMedia.fromUrl(picUrl);
-        await chatTarget.sendMessage(media, options);
-    } else {
-        await chatTarget.sendMessage(finalCaption, options);
-    }
+    try {
+        if (picUrl) {
+            const media = await MessageMedia.fromUrl(picUrl);
+            await sendMessageWithRetry(chatTarget, media, options);
+        } else {
+            await sendMessageWithRetry(chatTarget, finalCaption, options);
+        }
+    } catch(e) {}
+}
+
+// --- LOGIC UTAMA (MEMAKAI RAM DB) ---
+async function handleStatusView(msg, serviceName, imagePath) {
+    try {
+        const data = DB.shop_status[serviceName] || { status: 'OPEN', date: 'Belum update', time: '-' };
+        
+        if (data.status === 'CLOSED') {
+            msg.reply(`🚫 *${serviceName} KOSONG / TUTUP* 🚫\n\nMaaf, layanan sedang *TUTUP*.\n⏰ *Closed sejak:* ${data.time} WIB\n_Tunggu kabar selanjutnya ya 😙_`);
+            return;
+        }
+
+        const TPL = `📢 *${serviceName} PRICELIST* 📢\n🗓️ *Update:* ${data.date}\n🕛 *Pukul:* ${data.time} WIB\n\nIni pricelist terbaru.\n👇 *CARA PESAN:*\nTag admin & ketik *.pay*\n\n📝 *NOTE:*\nKirim bukti & tag admin ya 😙`;
+        
+        if (fsSync.existsSync(imagePath)) await sendMessageWithRetry(client, msg.from, MessageMedia.fromFilePath(imagePath), { caption: TPL });
+        else msg.reply(`⚠️ Admin belum upload Price List ${serviceName}.`);
+
+    } catch (error) { console.error(error); msg.reply('❌ Error system.'); }
+}
+
+async function handleStatusUpdate(msg, chat, serviceName, imagePath, isReset = false, isClose = false) {
+    const { date, time } = getWaktuIndonesia();
+    try {
+        if (isReset) {
+            delete DB.shop_status[serviceName];
+            await saveDatabase();
+            if(fsSync.existsSync(imagePath)) fsSync.unlinkSync(imagePath);
+            msg.reply(`✅ ${serviceName} berhasil di-RESET.`);
+            return;
+        }
+
+        if (isClose) {
+            DB.shop_status[serviceName] = { status: 'CLOSED', date, time };
+            await saveDatabase();
+            msg.reply(`⛔ *${serviceName} CLOSED!* Member akan melihat pesan tutup.`);
+            return;
+        }
+
+        // UPDATE OPEN
+        DB.shop_status[serviceName] = { status: 'OPEN', date, time };
+        await saveDatabase();
+        
+        if (msg.hasMedia) {
+            const media = await msg.downloadMedia();
+            if(media) await fs.writeFile(imagePath, media.data, 'base64');
+        }
+
+        const mentions = await getMentionsAll(chat);
+        const TPL = `📢 *${serviceName} UPDATE!* 📢\n🗓️ ${date} | 🕛 ${time} WIB\n\n🔥 *READY/OPEN!*\n\n👇 *CARA PESAN:*\nTag admin & ketik *.pay*`;
+        
+        if(fsSync.existsSync(imagePath)) await sendMessageWithRetry(chat, MessageMedia.fromFilePath(imagePath), { caption: TPL, mentions: mentions });
+        else await sendMessageWithRetry(chat, TPL, { mentions: mentions });
+
+    } catch (error) { console.error(error); msg.reply('❌ Gagal update.'); }
 }
 
 // Otak Bot
 client.on('message', async (message) => {
-    // ANTI SPAM
     if (message.timestamp < BOT_START_TIME) return; 
-
     const msg = message.body.toLowerCase();
 
-    // COOLDOWN PER USER (Smart Logic)
+    // COOLDOWN PER USER
     if (msg.startsWith('.')) {
-        const sender = message.from; // ID pengirim (misal: 62812xxx@c.us)
+        const sender = message.from;
         const now = Date.now();
-        
         if (cooldowns.has(sender)) {
-            const expirationTime = cooldowns.get(sender) + COOLDOWN_IN_MS;
-            if (now < expirationTime) {
-                // Opsional: Reply atau diamkan saja biar ga spam
-                // message.reply('⏳ Tunggu bentar bang, jangan spam!'); 
-                return; 
-            }
+            if (now < cooldowns.get(sender) + COOLDOWN_IN_MS) return;
         }
-        
-        // Simpan waktu user ini mengetik command
         cooldowns.set(sender, now);
-        
-        // Bersihkan data user dari memori setelah cooldown selesai (biar RAM hemat)
         setTimeout(() => cooldowns.delete(sender), COOLDOWN_IN_MS);
     } else { return; }
 
     // --- COMMAND MEMBER ---
     if(msg === '.ping') {
-        // Ambil waktu pesan dikirim (dikali 1000 karena timestamp WA dalam detik)
-        const messageTimestamp = message.timestamp * 1000; 
-        const currentTimestamp = Date.now();
-        const latency = currentTimestamp - messageTimestamp;
-        
-        message.reply(`Pong! 🏓\n _${latency}ms_`);
+        const latency = Date.now() - (message.timestamp * 1000);
+        message.reply(`Pong! 🏓\nRespond Time: *${latency}ms*`);
     }
     
     if(msg === '.help') {
-        if (isUserAdmin(message)) message.reply(HELP_MEMBER + HELP_ADMIN_ONLY + HELP_FOOTER);
-        else message.reply(HELP_MEMBER + HELP_FOOTER);
+        const content = isUserAdmin(message) ? (HELP_MEMBER + HELP_ADMIN_ONLY + HELP_FOOTER) : (HELP_MEMBER + HELP_FOOTER);
+        message.reply(content);
     }
 
-    // === FITUR LIST ADMIN BARU ===
     if(msg === '.admin') {
-        const ADMIN_INFO = `*LIST ADMIN SEONE STORE* 
--------------------------------
-*1. Zuka*
-✦ 081161626164
-*2. Linnn*
-✦ 081260809729
-*3. Genky*
-✦ 082185523432
--------------------------------
-_Jika ada kendala mendesak, silakan hubungi admin di atas. Harap chat dengan sopan, no spam, no call!_ 😉`;
-        message.reply(ADMIN_INFO);
+        message.reply(`*LIST ADMIN SEONE STORE*\n-------------------------------\n*1. Zuka* ✦ 081161626164\n*2. Linnn* ✦ 081260809729\n*3. Genky* ✦ 082185523432\n-------------------------------\n_Chat sopan, no spam, no call!_ 😉`);
     }
 
     if(msg === '.pay') {
         try {
             const media = MessageMedia.fromFilePath('./QRIS.png');
-            await client.sendMessage(message.from, media, { caption: PAY_MSG });
+            await sendMessageWithRetry(client, message.from, media, { caption: PAY_MSG + "\n\n🔔 *Mohon tag admin setelah transfer!*" });
         } catch (error) { message.reply('Mohon maaf, gambar QRIS sedang bermasalah.'); }
     }
 
-    // --- FITUR VIEW (MEMBER) ---
-    // GIG
-    if(msg === '.gig') {
-        let isClosed = false; let displayDate = 'Belum ada update'; let displayTime = '-';
-        if (fs.existsSync('./database_update.json')) {
-            try {
-                const data = JSON.parse(fs.readFileSync('./database_update.json', 'utf8'));
-                if (data.status === 'CLOSED') { isClosed = true; displayTime = data.time; } 
-                else { displayDate = data.date; displayTime = data.time; }
-            } catch (err) { }
-        }
-        if (isClosed) {
-            message.reply(`🚫 *STOCK GIG KOSONG / TUTUP* 🚫\n\nMaaf ya, stock GIG lagi *HABIS* atau layanan *TUTUP*.\n⏰ *Closed sejak:* ${displayTime} WIB\n_Tunggu kabar selanjutnya ya 😙_`);
-            return;
-        }
-        const TPL = `🛒 *GIG PRICELIST TERBARU* 🛒\n🗓️ *Update:* ${displayDate}\n🕛 *Pukul:* ${displayTime} WIB\n\nIni pricelist terbaru.\n👇 *CARA PESAN:*\nTag admin & ketik *.pay*\n\n📝 *NOTE:*\nKirim bukti & tag admin ya 😙`;
-        try {
-            if (fs.existsSync('./pricelist.png')) await client.sendMessage(message.from, MessageMedia.fromFilePath('./pricelist.png'), { caption: TPL });
-            else message.reply('⚠️ Admin belum upload Price List GIG.');
-        } catch (error) { message.reply('Error sistem.'); }
-    }
-
-    // BOOSTER
-    if(msg === '.booster') {
-        let isClosed = false; let displayDate = 'Belum ada update'; let displayTime = '-';
-        if (fs.existsSync('./database_booster.json')) {
-            try {
-                const data = JSON.parse(fs.readFileSync('./database_booster.json', 'utf8'));
-                if (data.status === 'CLOSED') { isClosed = true; displayTime = data.time; } 
-                else { displayDate = data.date; displayTime = data.time; }
-            } catch (err) { }
-        }
-        if (isClosed) {
-            message.reply(`🚫 *BOOSTER PENUH / CLOSED* 🚫\n\nSlot Booster *PENUH* atau *TUTUP*.\n⏰ *Closed sejak:* ${displayTime} WIB\n_Sabar ya guys!_ 🚀`);
-            return;
-        }
-        const TPL = `🚀 *BOOSTER PRICELIST TERBARU*\n🗓️ *Update:* ${displayDate}\n🕛 *Pukul:* ${displayTime} WIB\n\nIni harga booster terbaru.\n👇 *CARA PESAN:*\nTag admin & ketik *.pay*\n\n📝 *NOTE:*\nKirim bukti & tag admin ya 😙`;
-        try {
-            if (fs.existsSync('./pricelist_booster.png')) await client.sendMessage(message.from, MessageMedia.fromFilePath('./pricelist_booster.png'), { caption: TPL });
-            else message.reply('⚠️ Admin belum upload Price List Booster.');
-        } catch (error) { message.reply('Error sistem.'); }
-    }
-
-    // VILOG
+    // --- FITUR VIEW (DB BASED) ---
+    if(msg === '.gig') await handleStatusView(message, 'GIG', './pricelist.png');
+    if(msg === '.booster') await handleStatusView(message, 'BOOSTER', './pricelist_booster.png');
     if(msg === '.vilog') {
-        let isClosed = false; let displayDate = 'Belum ada update'; let displayTime = '-';
-        if (fs.existsSync('./database_vilog.json')) {
-            try {
-                const data = JSON.parse(fs.readFileSync('./database_vilog.json', 'utf8'));
-                if (data.status === 'CLOSED') { isClosed = true; displayTime = data.time; } 
-                else { displayDate = data.date; displayTime = data.time; }
-            } catch (err) { }
-        }
-        if (isClosed) {
-            message.reply(`🚫 *VILOG CLOSED / ANTRIAN PENUH* 🚫\n\nLayanan Vilog sedang *TUTUP*.\n⏰ *Closed sejak:* ${displayTime} WIB\n_Mohon pengertiannya!_ 🔐`);
-            return;
-        }
-        const TPL = `🔐 *VIA LOGIN PRICELIST* 🔐\n🗓️ *Update:* ${displayDate}\n🕛 *Pukul:* ${displayTime} WIB\n\n${VILOG_TNC}\n\n👇 *CARA PESAN:*\nTag admin & ketik *.pay*\n\n📝 *NOTE:*\nKirim bukti & tag admin ya 😙`;
         try {
-            if (fs.existsSync('./pricelist_vilog.png')) await client.sendMessage(message.from, MessageMedia.fromFilePath('./pricelist_vilog.png'), { caption: TPL });
-            else message.reply('⚠️ Admin belum upload Price List Via Login.');
-        } catch (error) { message.reply('Error sistem.'); }
+            const data = DB.shop_status['VILOG'] || { status: 'OPEN', date: 'Belum update' };
+            if (data.status === 'CLOSED') {
+                message.reply(`🚫 *VILOG CLOSED* 🚫\nLayanan sedang tutup sementara.`);
+                return;
+            }
+            const TPL = `🔐 *VIA LOGIN PRICELIST* 🔐\n🗓️ *Update:* ${data.date}\n\n${VILOG_TNC}\n\n👇 *CARA PESAN:*\nTag admin & ketik *.pay*`;
+            
+            if (fsSync.existsSync('./pricelist_vilog.png')) await sendMessageWithRetry(client, message.from, MessageMedia.fromFilePath('./pricelist_vilog.png'), { caption: TPL });
+            else message.reply('⚠️ Admin belum upload Price List Vilog.');
+        } catch(e) { message.reply('Error sistem.'); }
     }
 
-    // PTPT LIST (JOIN)
+    // --- PTPT LIST (JOIN) ---
     if (msg.startsWith('.ptptlist')) {
-        let robloxUser = message.body.slice(10).trim();
-        if (!robloxUser) { message.reply(`⚠️ *Format Salah!*\n.ptptlist [Username Roblox]\nContoh: .ptptlist DragonSlayer99`); return; }
-        if (!fs.existsSync('./database_ptpt.json')) { message.reply('⚠️ Belum ada sesi PTPT.'); return; }
+        let txt = message.body.slice(10).trim();
+        if (!txt) { message.reply(`⚠️ Format: .ptptlist [Kode] [Username]`); return; }
+        
+        const args = txt.split(' ');
+        let code = args[0].toUpperCase();
+        let user = args.slice(1).join(' ');
 
         try {
-            const raw = fs.readFileSync('./database_ptpt.json', 'utf8');
-            let allSessions = JSON.parse(raw);
-            const args = robloxUser.split(' ');
-            let code = args[0].toUpperCase();
-            let user = args.slice(1).join(' ');
-
-            if (allSessions[code]) { if(!user) { message.reply(`⚠️ Masukkan username!\nContoh: .ptptlist ${code} ProPlayer`); return; } } 
-            else { message.reply('⚠️ *Sesi tidak ditemukan / Format Salah!*\nHarap sertakan Kode Sesi.\nContoh: `.ptptlist 24H Username`'); return; }
-
-            let session = allSessions[code];
-            if (session.isClosed) { message.reply(`❌ *SESI DITUTUP* ❌\nSesi *${code}* sudah ditutup Admin.`); return; }
-            if (session.participants.length >= 20) { message.reply(`❌ Slot sesi *${code}* penuh (20/20)!`); return; }
-            if (session.participants.some(p => p.roblox.toLowerCase() === user.toLowerCase())) { message.reply(`⚠️ Username *${user}* sudah terdaftar!`); return; }
+            // Cek Session
+            if (!DB.ptpt_sessions[code]) { message.reply(`⚠️ Sesi *${code}* tidak ditemukan. Cek .ptptupdate`); return; }
+            const session = DB.ptpt_sessions[code];
+            
+            if (!user) { message.reply(`⚠️ Masukkan username! Contoh: .ptptlist ${code} ProPlayer`); return; }
+            if (session.is_closed) { message.reply(`❌ Sesi *${code}* sudah DITUTUP Admin.`); return; }
+            if (session.participants.length >= 20) { message.reply(`❌ Slot sesi *${code}* sudah penuh (20/20)!`); return; }
+            
+            // Cek Duplikat
+            const isExist = session.participants.some(p => p.roblox.toLowerCase() === user.toLowerCase());
+            if (isExist) { message.reply(`⚠️ Username *${user}* sudah terdaftar di sesi ini.`); return; }
 
             const contact = await message.getContact();
-            session.participants.push({ name: contact.pushname || contact.number, roblox: user, id: contact.id._serialized, isPaid: false });
-            allSessions[code] = session;
-            fs.writeFileSync('./database_ptpt.json', JSON.stringify(allSessions));
+            const waName = contact.pushname || contact.number;
+            const waId = contact.id._serialized;
 
+            // Masukkan Data ke RAM & Save
+            session.participants.push({ name: waName, roblox: user, wa_id: waId, is_paid: false });
+            await saveDatabase();
+
+            // Tampilkan List
             let list = '';
             for (let i = 0; i < 20; i++) {
                 let p = session.participants[i];
-                list += `${i+1}. ${p ? `${p.name} / ${p.roblox}${p.isPaid ? ' ✅' : ''}` : ''}\n`;
+                list += `${i+1}. ${p ? `${p.name} / ${p.roblox}${p.is_paid ? ' ✅' : ''}` : ''}\n`;
             }
-
-            const TPL = `📢 SESSION INFO (${code})\n• Jenis: ${session.sessionType}\n• Waktu: ${session.timeInfo}\n• Status: OPEN (${session.participants.length}/20)\n\n--------LIST MEMBER---------\nUSN Wa / USN rblox\n${list}\n*CARA JOIN???*\n_ketik : .ptptlist ${code} (username)_${PTPT_FOOTER}`;
+            const footer = `\n-------------------------------\ncara bayar: ketik *.pay* untuk memunculkan qris\nnote: jangan lupa kirim buktinya ke sini dan tag admin juga ya😙`;
+            const TPL = `📢 SESSION INFO (${code})\n• Jenis: ${session.type}\n• Waktu: ${session.time}\n• Status: OPEN (${session.participants.length}/20)\n\n--------LIST MEMBER---------\nUSN Wa / USN rblox\n${list}\n*CARA JOIN???*\n_ketik : .ptptlist ${code} (username)_${footer}`;
             await message.reply(TPL);
-        } catch (error) { console.log('Error ptptlist:', error); }
+
+        } catch (error) { console.error(error); message.reply('❌ Error system.'); }
     }
 
-    // PTPT UPDATE
+    // --- PTPT UPDATE ---
     if(msg.startsWith('.ptptupdate')) {
-        const args = message.body.slice(11).trim().split(' ');
-        const code = args[0] ? args[0].toUpperCase() : null;
-        if (!fs.existsSync('./database_ptpt.json')) { message.reply('⚠️ Belum ada sesi aktif.'); return; }
-
+        const code = message.body.slice(12).trim().split(' ')[0].toUpperCase();
         try {
-            const all = JSON.parse(fs.readFileSync('./database_ptpt.json', 'utf8'));
-            const keys = Object.keys(all);
-            if (keys.length === 0) { message.reply('⚠️ Database kosong.'); return; }
-
-            if (code && all[code]) {
-                let s = all[code];
+            if (code) {
+                if (!DB.ptpt_sessions[code]) { message.reply(`⚠️ Sesi ${code} tidak ada.`); return; }
+                const session = DB.ptpt_sessions[code];
+                
                 let list = '';
                 for (let i = 0; i < 20; i++) {
-                    let p = s.participants[i];
-                    list += `${i+1}. ${p ? `${p.name} / ${p.roblox}${p.isPaid ? ' ✅' : ''}` : ''}\n`;
+                    let p = session.participants[i];
+                    list += `${i+1}. ${p ? `${p.name} / ${p.roblox}${p.is_paid ? ' ✅' : ''}` : ''}\n`;
                 }
-                let status = s.isClosed ? 'CLOSED (DITUTUP ADMIN)' : (s.participants.length >= 20 ? 'FULL (20/20)' : `OPEN (${s.participants.length}/20)`);
-                const TPL = `📢 SESSION INFO (${code})\n• Jenis: ${s.sessionType}\n• Waktu: ${s.timeInfo}\n• Status: ${status}\n\n--------LIST MEMBER---------\nUSN Wa / USN rblox\n${list}\n*CARA JOIN???*\n_ketik : .ptptlist ${code} (username)_${PTPT_FOOTER}`;
+                let statusTxt = session.is_closed ? 'CLOSED (DITUTUP)' : (session.participants.length >= 20 ? 'FULL' : `OPEN (${session.participants.length}/20)`);
+                const footer = `\n-------------------------------\ncara bayar: ketik *.pay* untuk memunculkan qris\nnote: jangan lupa kirim buktinya ke sini dan tag admin juga ya😙`;
+                const TPL = `📢 SESSION INFO (${code})\n• Jenis: ${session.type}\n• Waktu: ${session.time}\n• Status: ${statusTxt}\n\n--------LIST MEMBER---------\nUSN Wa / USN rblox\n${list}\n*CARA JOIN???*\n_ketik : .ptptlist ${code} (username)_${footer}`;
                 
-                if (fs.existsSync('./ptpt_image.png')) await client.sendMessage(message.from, MessageMedia.fromFilePath('./ptpt_image.png'), { caption: TPL });
+                if (fsSync.existsSync('./ptpt_image.png')) await sendMessageWithRetry(client, message.from, MessageMedia.fromFilePath('./ptpt_image.png'), { caption: TPL });
                 else await message.reply(TPL);
+
             } else {
+                const keys = Object.keys(DB.ptpt_sessions);
+                if (keys.length === 0) { message.reply('⚠️ Belum ada sesi aktif.'); return; }
+                
                 let txt = `📋 *DAFTAR SESI AKTIF:*\n\n`;
                 keys.forEach(k => {
-                    let s = all[k];
-                    let lbl = s.isClosed ? "[CLOSED] ❌" : (s.participants.length >= 20 ? "[FULL]" : "[OPEN]");
-                    txt += `🔹 *${k}* (${s.sessionType}) ${lbl}\n   📅 ${s.timeInfo}\n   👥 ${s.participants.length}/20\n   👉 .ptptlist ${k} [User]\n\n`;
+                    const s = DB.ptpt_sessions[k];
+                    let lbl = s.is_closed ? "[CLOSED] ❌" : (s.participants.length >= 20 ? "[FULL]" : "[OPEN]");
+                    txt += `🔹 *${k}* (${s.type}) ${lbl}\n   📅 ${s.time}\n   👥 ${s.participants.length}/20\n   👉 .ptptlist ${k} [User]\n\n`;
                 });
                 await message.reply(txt);
             }
-        } catch (error) { message.reply('❌ Gagal cek update.'); }
+        } catch (e) { console.error(e); message.reply('❌ Error.'); }
     }
 
     // --- AREA ADMIN ---
-    if(msg === '.join on' || msg === '.join off' || msg === '.leave on' || msg === '.leave off' ||
-       msg === '.gigupdate' || msg === '.gigreset' || msg === '.gigclose' || 
-       msg === '.boosterupdate' || msg === '.boosterreset' || msg === '.boosterclose' || 
-       msg === '.vilogupdate' || msg === '.vilogreset' || msg === '.vilogclose' ||
-       msg.startsWith('.ptptreset') || msg.startsWith('.ptptopen') || msg.startsWith('.ptptclose') || msg.startsWith('.ptptset') || msg.startsWith('.ptptremove') || msg.startsWith('.ptptpaid') || msg === '.testgreet' || msg.startsWith('.p ')) {
-        
-        if (!isUserAdmin(message)) { message.reply('kamu bukan admin, jangan coba-coba ya dek yaaa😙'); return; }
+    if(isUserAdmin(message)) {
+        // SETTINGS JOIN/LEAVE
+        if (msg === '.join on') { DB.config.welcome = true; await saveDatabase(); message.reply('✅ Auto Welcome: ON'); }
+        if (msg === '.join off') { DB.config.welcome = false; await saveDatabase(); message.reply('🚫 Auto Welcome: OFF'); }
+        if (msg === '.leave on') { DB.config.goodbye = true; await saveDatabase(); message.reply('✅ Auto Goodbye: ON'); }
+        if (msg === '.leave off') { DB.config.goodbye = false; await saveDatabase(); message.reply('🚫 Auto Goodbye: OFF'); }
 
-        if (msg === '.join on') { BOT_SETTINGS.enableWelcome = true; saveSettings(); message.reply('✅ Auto Welcome: ON'); }
-        if (msg === '.join off') { BOT_SETTINGS.enableWelcome = false; saveSettings(); message.reply('🚫 Auto Welcome: OFF'); }
-        if (msg === '.leave on') { BOT_SETTINGS.enableGoodbye = true; saveSettings(); message.reply('✅ Auto Goodbye: ON'); }
-        if (msg === '.leave off') { BOT_SETTINGS.enableGoodbye = false; saveSettings(); message.reply('🚫 Auto Goodbye: OFF'); }
-        if (msg === '.testgreet') { const chat = await message.getChat(); const contact = await message.getContact(); await kirimSapaanDenganGambar(chat, contact); }
+        if (msg === '.testgreet') { const contact = await message.getContact(); await kirimSapaanDenganGambar(await message.getChat(), contact); }
 
-        // BROADCAST (.p) - SUDAH CEPAT
+        // BROADCAST
         if(msg.startsWith('.p ')) {
             const txt = message.body.slice(3).trim();
-            if(!txt) { message.reply(`⚠️ *Format Salah!* .p [Pesan]`); return; }
-            try {
-                const chat = await message.getChat();
-                const mentions = await getMentionsAll(chat); // Pakai helper cepat
-                await chat.sendMessage(txt, { mentions: mentions });
-            } catch (error) {}
+            if(!txt) return;
+            const chat = await message.getChat();
+            const mentions = await getMentionsAll(chat);
+            await sendMessageWithRetry(chat, txt, { mentions });
         }
 
-        // GIG ADMIN (UPDATE + TAG ALL)
-        if(msg === '.gigupdate') {
-             const chat = await message.getChat();
-             const { date, time } = getWaktuIndonesia();
-             fs.writeFileSync('./database_update.json', JSON.stringify({ date, time, status: 'OPEN' }));
-             if (message.hasMedia) {
-                const media = await message.downloadMedia();
-                if(media) fs.writeFileSync('./pricelist.png', media.data, 'base64');
-             }
-             const mentions = await getMentionsAll(chat); // Pakai helper cepat
-             const TPL = `📢 *GIG STOCK UPDATE!* 📢\n🗓️ ${date} | 🕛 ${time} WIB\n\n🔥 *READY STOCK!*\n\n👇 *CARA PESAN:*\nTag admin & ketik *.pay*\n\n📝 *NOTE:*\nKirim bukti & tag admin ya 😙`;
-             if(fs.existsSync('./pricelist.png')) await chat.sendMessage(MessageMedia.fromFilePath('./pricelist.png'), { caption: TPL, mentions: mentions });
-             else await chat.sendMessage(TPL, { mentions: mentions });
-             console.log(`[ADMIN] GIG Updated`);
-        }
-        if(msg === '.gigclose') {
-            const { date, time } = getWaktuIndonesia();
-            fs.writeFileSync('./database_update.json', JSON.stringify({ date, time, status: 'CLOSED' }));
-            message.reply('⛔ *GIG CLOSED!*');
-        }
-        if(msg === '.gigreset') {
-            try { if(fs.existsSync('./database_update.json')) fs.unlinkSync('./database_update.json');
-            if(fs.existsSync('./pricelist.png')) fs.unlinkSync('./pricelist.png'); message.reply('✅ GIG Reset.'); } catch (e) { message.reply('❌ Gagal reset.'); }
-        }
+        // GIG/BOOSTER/VILOG ADMIN
+        if(msg === '.gigupdate') await handleStatusUpdate(message, await message.getChat(), 'GIG', './pricelist.png');
+        if(msg === '.gigclose') await handleStatusUpdate(message, null, 'GIG', null, false, true);
+        if(msg === '.gigreset') await handleStatusUpdate(message, null, 'GIG', './pricelist.png', true);
 
-        // BOOSTER ADMIN (UPDATE + TAG ALL)
-        if(msg === '.boosterupdate') {
-             const chat = await message.getChat();
-             const { date, time } = getWaktuIndonesia();
-             fs.writeFileSync('./database_booster.json', JSON.stringify({ date, time, status: 'OPEN' }));
-             if (message.hasMedia) {
-                const media = await message.downloadMedia();
-                if(media) fs.writeFileSync('./pricelist_booster.png', media.data, 'base64');
-             }
-             const mentions = await getMentionsAll(chat); // Pakai helper cepat
-             const TPL = `📢 *BOOSTER UPDATE!* 📢\n🗓️ ${date} | 🕛 ${time} WIB\n\n🔥 *OPEN SLOT!*\n\n👇 *CARA PESAN:*\nTag admin & ketik *.pay*\n\n📝 *NOTE:*\nKirim bukti & tag admin ya 😙`;
-             if(fs.existsSync('./pricelist_booster.png')) await chat.sendMessage(MessageMedia.fromFilePath('./pricelist_booster.png'), { caption: TPL, mentions: mentions });
-             else await chat.sendMessage(TPL, { mentions: mentions });
-             console.log(`[ADMIN] Booster Updated`);
-        }
-        if(msg === '.boosterclose') {
-            const { date, time } = getWaktuIndonesia();
-            fs.writeFileSync('./database_booster.json', JSON.stringify({ date, time, status: 'CLOSED' }));
-            message.reply('⛔ *BOOSTER CLOSED!*');
-        }
-        if(msg === '.boosterreset') {
-            try { if(fs.existsSync('./database_booster.json')) fs.unlinkSync('./database_booster.json');
-            if(fs.existsSync('./pricelist_booster.png')) fs.unlinkSync('./pricelist_booster.png'); message.reply('✅ Booster Reset.'); } catch (e) { message.reply('❌ Gagal reset.'); }
-        }
+        if(msg === '.boosterupdate') await handleStatusUpdate(message, await message.getChat(), 'BOOSTER', './pricelist_booster.png');
+        if(msg === '.boosterclose') await handleStatusUpdate(message, null, 'BOOSTER', null, false, true);
+        if(msg === '.boosterreset') await handleStatusUpdate(message, null, 'BOOSTER', './pricelist_booster.png', true);
 
-        // VILOG ADMIN (UPDATE + TAG ALL)
-        if(msg === '.vilogupdate') {
-             const chat = await message.getChat();
-             const { date, time } = getWaktuIndonesia();
-             fs.writeFileSync('./database_vilog.json', JSON.stringify({ date, time, status: 'OPEN' }));
-             if (message.hasMedia) {
-                const media = await message.downloadMedia();
-                if(media) fs.writeFileSync('./pricelist_vilog.png', media.data, 'base64');
-             }
-             const mentions = await getMentionsAll(chat); // Pakai helper cepat
-             const TPL = `📢 *VIA LOGIN (JOKI) UPDATE!* 📢\n🗓️ ${date} | 🕛 ${time} WIB\n\n🔥 *OPEN ORDER!*\n\n👇 *CARA PESAN:*\nTag admin & ketik *.pay*\n\n📝 *NOTE:*\nKirim bukti & tag admin ya 😙`;
-             if(fs.existsSync('./pricelist_vilog.png')) await chat.sendMessage(MessageMedia.fromFilePath('./pricelist_vilog.png'), { caption: TPL, mentions: mentions });
-             else await chat.sendMessage(TPL, { mentions: mentions });
-             console.log(`[ADMIN] VILOG Updated`);
-        }
-        if(msg === '.vilogclose') {
-            const { date, time } = getWaktuIndonesia();
-            fs.writeFileSync('./database_vilog.json', JSON.stringify({ date, time, status: 'CLOSED' }));
-            message.reply('⛔ *VILOG CLOSED!*');
-        }
-        if(msg === '.vilogreset') {
-             try { if(fs.existsSync('./database_vilog.json')) fs.unlinkSync('./database_vilog.json');
-             if(fs.existsSync('./pricelist_vilog.png')) fs.unlinkSync('./pricelist_vilog.png'); message.reply('✅ Vilog Reset.'); } catch (e) { message.reply('❌ Gagal reset.'); }
-        }
+        if(msg === '.vilogupdate') await handleStatusUpdate(message, await message.getChat(), 'VILOG', './pricelist_vilog.png');
+        if(msg === '.vilogclose') await handleStatusUpdate(message, null, 'VILOG', null, false, true);
+        if(msg === '.vilogreset') await handleStatusUpdate(message, null, 'VILOG', './pricelist_vilog.png', true);
 
-        // PTPT ADMIN
+        // PTPT ADMIN COMMANDS
         if(msg.startsWith('.ptptopen')) {
-            const rawBody = message.body.slice(9).trim(); 
-            const firstSpace = rawBody.indexOf(' ');
-            if (firstSpace === -1) { message.reply(`⚠️ *FORMAT SALAH!* Lihat .help admin`); return; }
-            const code = rawBody.substring(0, firstSpace).toUpperCase();
-            const details = rawBody.substring(firstSpace + 1).split(',');
-            if (details.length < 2) { message.reply('⚠️ *FORMAT SALAH!* Pisahkan [Jenis Sesi] dan [Info Waktu] dgn koma.'); return; }
-            const type = details[0].trim(); const time = details[1].trim();
+            const body = message.body.slice(9).trim();
+            const space = body.indexOf(' ');
+            if (space === -1) { message.reply('⚠️ Format: .ptptopen [KODE] [Jenis], [Waktu]'); return; }
+            const code = body.substring(0, space).toUpperCase();
+            const details = body.substring(space + 1).split(',').map(s => s.trim());
+            if (details.length < 2) { message.reply('⚠️ Format salah. Pisahkan jenis & waktu dgn koma.'); return; }
+            
+            DB.ptpt_sessions[code] = { type: details[0], time: details[1], is_closed: false, participants: [] };
+            await saveDatabase();
 
-            message.reply(`⏳ Membuka sesi *${code}*...`);
-            try {
-                let all = {};
-                if (fs.existsSync('./database_ptpt.json')) {
-                    try { const f = fs.readFileSync('./database_ptpt.json', 'utf8'); const p = JSON.parse(f); if (!Array.isArray(p)) all = p; } catch(e) {}
-                }
-                all[code] = { sessionType: type, timeInfo: time, isClosed: false, participants: [] };
-                fs.writeFileSync('./database_ptpt.json', JSON.stringify(all));
-                if (message.hasMedia) { const m = await message.downloadMedia(); if(m) fs.writeFileSync('./ptpt_image.png', m.data, 'base64'); }
-
-                const chat = await message.getChat();
-                let list = ''; for (let i = 1; i <= 20; i++) list += `${i}.\n`;
-                const TPL = `📢 SESSION INFO OPEN (${code})\n• Jenis: ${type}\n• Waktu: ${time}\n• Status: OPEN (0/20)\n\n--------LIST MEMBER---------\nUSN Wa / USN rblox\n${list}*CARA JOIN ???*\n_ketik : .ptptlist ${code} (username)_${PTPT_FOOTER}`;
-                
-                const mentions = await getMentionsAll(chat); // Pakai helper cepat
-                if (fs.existsSync('./ptpt_image.png')) await chat.sendMessage(MessageMedia.fromFilePath('./ptpt_image.png'), { caption: TPL, mentions: mentions });
-                else await chat.sendMessage(TPL, { mentions: mentions });
-            } catch (error) { message.reply('❌ Gagal buka sesi.'); }
+            if (message.hasMedia) {
+                const m = await message.downloadMedia();
+                if(m) await fs.writeFile('./ptpt_image.png', m.data, 'base64');
+            }
+            const footer = `\n-------------------------------\ncara bayar: ketik *.pay* untuk memunculkan qris\nnote: jangan lupa kirim buktinya ke sini dan tag admin juga ya😙`;
+            let list = ''; for (let i = 1; i <= 20; i++) list += `${i}.\n`;
+            const TPL = `📢 SESSION INFO OPEN (${code})\n• Jenis: ${details[0]}\n• Waktu: ${details[1]}\n• Status: OPEN (0/20)\n\n--------LIST MEMBER---------\nUSN Wa / USN rblox\n${list}*CARA JOIN ???*\n_ketik : .ptptlist ${code} (username)_${footer}`;
+            
+            const chat = await message.getChat();
+            const mentions = await getMentionsAll(chat);
+            if (fsSync.existsSync('./ptpt_image.png')) await sendMessageWithRetry(chat, MessageMedia.fromFilePath('./ptpt_image.png'), { caption: TPL, mentions });
+            else await sendMessageWithRetry(chat, TPL, { mentions });
         }
 
         if(msg.startsWith('.ptptclose')) {
             const code = message.body.slice(10).trim().toUpperCase();
-            if (!code) { message.reply('⚠️ Format: `.ptptclose [KODE]`'); return; }
-            if (!fs.existsSync('./database_ptpt.json')) return;
-            try {
-                const raw = fs.readFileSync('./database_ptpt.json', 'utf8');
-                let all = JSON.parse(raw);
-                if (!all[code]) { message.reply(`❌ Sesi ${code} tak ditemukan.`); return; }
-                all[code].isClosed = true;
-                fs.writeFileSync('./database_ptpt.json', JSON.stringify(all));
-                
-                // Optional: Tag member di sesi itu saja, atau tag semua. Di sini kita tag semua untuk info.
-                const chat = await message.getChat();
-                const mentions = await getMentionsAll(chat); 
-                await chat.sendMessage(`⛔ Sesi *${code}* berhasil DITUTUP. Member tidak bisa join lagi.`, { mentions: mentions });
-            } catch (error) { message.reply('❌ Gagal tutup sesi.'); }
+            if(!DB.ptpt_sessions[code]) { message.reply('❌ Sesi tak ditemukan.'); return; }
+            DB.ptpt_sessions[code].is_closed = true;
+            await saveDatabase();
+            
+            const chat = await message.getChat();
+            const mentions = await getMentionsAll(chat);
+            await sendMessageWithRetry(chat, `⛔ Sesi *${code}* berhasil DITUTUP. Member tidak bisa join lagi.`, {mentions});
         }
 
         if(msg.startsWith('.ptptset')) {
-            const rawBody = message.body.slice(8).trim(); const firstSpace = rawBody.indexOf(' ');
-            if (firstSpace === -1) { message.reply('⚠️ Format: .ptptset [KODE] [Waktu Baru]'); return; }
-            const code = rawBody.substring(0, firstSpace).toUpperCase(); const newTime = rawBody.substring(firstSpace + 1).trim();
-            if (!fs.existsSync('./database_ptpt.json')) return;
-            try {
-                let all = JSON.parse(fs.readFileSync('./database_ptpt.json', 'utf8'));
-                if (!all[code]) { message.reply(`❌ Sesi ${code} tak ditemukan.`); return; }
-                all[code].timeInfo = newTime;
-                fs.writeFileSync('./database_ptpt.json', JSON.stringify(all));
-                message.reply(`✅ Info waktu *${code}* diupdate.`);
-            } catch (error) { message.reply('❌ Gagal update.'); }
+            const body = message.body.slice(8).trim();
+            const space = body.indexOf(' ');
+            if (space === -1) return;
+            const code = body.substring(0, space).toUpperCase();
+            const newTime = body.substring(space + 1).trim();
+            if(!DB.ptpt_sessions[code]) { message.reply('❌ Sesi tak ditemukan.'); return; }
+            DB.ptpt_sessions[code].time = newTime;
+            await saveDatabase();
+            message.reply(`✅ Waktu sesi ${code} diupdate.`);
         }
 
         if(msg.startsWith('.ptptpaid')) {
-            const rawBody = message.body.slice(9).trim(); const firstSpace = rawBody.indexOf(' ');
-            if (firstSpace === -1) { message.reply('⚠️ Format: .ptptpaid [KODE] [No Urut]'); return; }
-            const code = rawBody.substring(0, firstSpace).toUpperCase(); const numTxt = rawBody.substring(firstSpace + 1).trim();
-            if (!fs.existsSync('./database_ptpt.json')) return;
-            try {
-                let all = JSON.parse(fs.readFileSync('./database_ptpt.json', 'utf8'));
-                if (!all[code]) { message.reply(`❌ Sesi ${code} tak ditemukan.`); return; }
-                const idxs = numTxt.split(',').map(i => parseInt(i.trim()) - 1);
-                let s = all[code]; let updated = 0;
-                idxs.forEach(i => { if (s.participants[i]) { s.participants[i].isPaid = true; updated++; } });
-                if (updated === 0) { message.reply('⚠️ Tidak ada member valid.'); return; }
-                all[code] = s; fs.writeFileSync('./database_ptpt.json', JSON.stringify(all));
-
-                const chat = await message.getChat();
-                let list = '';
-                for (let i = 0; i < 20; i++) {
-                    let p = s.participants[i];
-                    list += `${i+1}. ${p ? `${p.name} / ${p.roblox}${p.isPaid ? ' ✅' : ''}` : ''}\n`;
-                }
-                const TPL = `📢 *PAYMENT CONFIRMED (${code})*\n• Jenis: ${s.sessionType}\n• Waktu: ${s.timeInfo}\n\n--------LIST MEMBER---------\nUSN Wa / USN rblox\n${list}_LUNAS!_ ✅\n*CARA JOIN ???*\n_ketik : .ptptlist ${code} (username)_${PTPT_FOOTER}`;
-                
-                const mentions = await getMentionsAll(chat); // Pakai helper cepat
-                if (fs.existsSync('./ptpt_image.png')) await chat.sendMessage(MessageMedia.fromFilePath('./ptpt_image.png'), { caption: TPL, mentions: mentions });
-                else await chat.sendMessage(TPL, { mentions: mentions });
-            } catch (error) { console.log(error); message.reply('❌ Error.'); }
-        }
-
-        if(msg.startsWith('.ptptremove')) {
-            const rawBody = message.body.slice(11).trim(); const firstSpace = rawBody.indexOf(' ');
-            if (firstSpace === -1) { message.reply('⚠️ Format: .ptptremove [KODE] [No Urut]'); return; }
-            const code = rawBody.substring(0, firstSpace).toUpperCase(); const idx = parseInt(rawBody.substring(firstSpace + 1).trim()) - 1;
-            if (!fs.existsSync('./database_ptpt.json')) return;
-            try {
-                let all = JSON.parse(fs.readFileSync('./database_ptpt.json', 'utf8'));
-                if (!all[code]) { message.reply(`❌ Sesi ${code} tak ditemukan.`); return; }
-                let s = all[code];
-                if (!s.participants[idx]) { message.reply('⚠️ Slot kosong.'); return; }
-                const name = s.participants[idx].name;
-                s.participants.splice(idx, 1);
-                all[code] = s; fs.writeFileSync('./database_ptpt.json', JSON.stringify(all));
-                message.reply(`✅ Hapus *${name}* dari ${code}.`);
-            } catch (error) { message.reply('❌ Gagal hapus.'); }
+            const body = message.body.slice(9).trim();
+            const space = body.indexOf(' ');
+            if (space === -1) return;
+            const code = body.substring(0, space).toUpperCase();
+            const nums = body.substring(space + 1).split(',').map(n => parseInt(n.trim()) - 1);
+            
+            if(!DB.ptpt_sessions[code]) { message.reply('❌ Sesi tak ditemukan.'); return; }
+            const session = DB.ptpt_sessions[code];
+            
+            let updated = 0;
+            nums.forEach(i => { 
+                if (session.participants[i]) { session.participants[i].is_paid = true; updated++; } 
+            });
+            if(updated > 0) await saveDatabase();
+            
+            // Repost List
+            let list = '';
+            for (let i = 0; i < 20; i++) {
+                let p = session.participants[i];
+                list += `${i+1}. ${p ? `${p.name} / ${p.roblox}${p.is_paid ? ' ✅' : ''}` : ''}\n`;
+            }
+            const footer = `\n-------------------------------\ncara bayar: ketik *.pay* untuk memunculkan qris\nnote: jangan lupa kirim buktinya ke sini dan tag admin juga ya😙`;
+            const TPL = `📢 *PAYMENT CONFIRMED (${code})*\n• Jenis: ${session.type}\n• Waktu: ${session.time}\n\n--------LIST MEMBER---------\nUSN Wa / USN rblox\n${list}_LUNAS!_ ✅\n*CARA JOIN ???*\n_ketik : .ptptlist ${code} (username)_${footer}`;
+            
+            const chat = await message.getChat();
+            const mentions = await getMentionsAll(chat);
+            if (fsSync.existsSync('./ptpt_image.png')) await sendMessageWithRetry(chat, MessageMedia.fromFilePath('./ptpt_image.png'), { caption: TPL, mentions });
+            else await sendMessageWithRetry(chat, TPL, { mentions });
         }
 
         if(msg.startsWith('.ptptreset')) {
             const code = message.body.slice(10).trim().toUpperCase();
-            if (!code) { message.reply('⚠️ Format: .ptptreset all / [KODE]'); return; }
-            try {
-                if (code === 'ALL') {
-                    if (fs.existsSync('./database_ptpt.json')) fs.unlinkSync('./database_ptpt.json');
-                    if (fs.existsSync('./ptpt_image.png')) fs.unlinkSync('./ptpt_image.png');
-                    message.reply('✅ PTPT Reset All.');
-                } else {
-                    if (!fs.existsSync('./database_ptpt.json')) { message.reply('⚠️ Database kosong.'); return; }
-                    let all = JSON.parse(fs.readFileSync('./database_ptpt.json', 'utf8'));
-                    if (all[code]) {
-                        delete all[code];
-                        if (Object.keys(all).length === 0) {
-                            fs.unlinkSync('./database_ptpt.json'); if(fs.existsSync('./ptpt_image.png')) fs.unlinkSync('./ptpt_image.png');
-                            message.reply(`✅ Sesi ${code} dihapus (db kosong).`);
-                        } else {
-                            fs.writeFileSync('./database_ptpt.json', JSON.stringify(all));
-                            message.reply(`✅ Sesi ${code} dihapus.`);
-                        }
-                    } else { message.reply('❌ Sesi tak ditemukan.'); }
-                }
-            } catch (error) { message.reply('❌ Error reset.'); }
+            if (code === 'ALL') {
+                DB.ptpt_sessions = {};
+                await saveDatabase();
+                message.reply('✅ Reset ALL PTPT Data.');
+            } else {
+                if(DB.ptpt_sessions[code]) {
+                    delete DB.ptpt_sessions[code];
+                    await saveDatabase();
+                    message.reply(`✅ Sesi ${code} dihapus.`);
+                } else { message.reply('❌ Sesi tak ditemukan.'); }
+            }
+        }
+        
+        if(msg.startsWith('.ptptremove')) {
+             const body = message.body.slice(11).trim();
+             const space = body.indexOf(' ');
+             const code = body.substring(0, space).toUpperCase();
+             const idx = parseInt(body.substring(space + 1).trim()) - 1;
+             
+             if(DB.ptpt_sessions[code] && DB.ptpt_sessions[code].participants[idx]) {
+                 DB.ptpt_sessions[code].participants.splice(idx, 1);
+                 await saveDatabase();
+                 message.reply(`✅ Member no ${idx+1} dihapus dari ${code}.`);
+             } else { message.reply('⚠️ Slot kosong/tidak ada.'); }
         }
     }
 });
 
-// === EVENT HANDLER (JOIN & LEAVE) ===
-client.on('group_join', async (notification) => {
-    if (notification.timestamp && notification.timestamp < BOT_START_TIME) return;
-    if (!BOT_SETTINGS.enableWelcome) return;
+// === EVENT HANDLER ===
+client.on('group_join', async (notif) => {
+    if (notif.timestamp < BOT_START_TIME) return;
+    if (!DB.config.welcome) return;
     try {
-        const chat = await notification.getChat();
-        const contact = await client.getContactById(notification.recipientIds[0]); 
+        const chat = await notif.getChat();
+        const contact = await client.getContactById(notif.recipientIds[0]); 
         await kirimSapaanDenganGambar(chat, contact);
-    } catch (error) {}
+    } catch (e) {}
 });
 
-client.on('group_leave', async (notification) => {
-    if (notification.timestamp && notification.timestamp < BOT_START_TIME) return;
-    if (!BOT_SETTINGS.enableGoodbye) return;
+client.on('group_leave', async (notif) => {
+    if (notif.timestamp < BOT_START_TIME) return;
+    if (!DB.config.goodbye) return;
     try {
-        const chat = await notification.getChat();
-        const contact = await client.getContactById(notification.recipientIds[0]);
+        const chat = await notif.getChat();
+        const contact = await client.getContactById(notif.recipientIds[0]);
         const text = `@${contact.id.user} telah keluar dari grup, jangan lupa bawakan gorengan dan es teh manis se truk untuk member member ku jika kembali lagi 👋`;
-        await chat.sendMessage(text, { mentions: [contact] });
-    } catch (error) {}
+        await sendMessageWithRetry(chat, text, { mentions: [contact] });
+    } catch (e) {}
 });
 
 client.initialize();
