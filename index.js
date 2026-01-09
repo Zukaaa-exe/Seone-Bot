@@ -528,18 +528,37 @@ client.on('message', async (message) => {
             }
         }
         
-        // --- FIX PTPT REMOVE (AUTO SYNC) ---
+        // --- FIX PTPT REMOVE (LEBIH PINTAR & AUTO SYNC) ---
         if(msg.startsWith('.ptptremove')) {
              const body = message.body.slice(11).trim();
+
+             // 1. Cek jika command kosong (cuma ketik .ptptremove)
+             if (!body) {
+                 message.reply('⚠️ Format salah!\nGunakan: .ptptremove [KODE] [NOMOR]\nContoh: .ptptremove 24H 1');
+                 return;
+             }
+
              const space = body.indexOf(' ');
+             // 2. Cek jika lupa spasi (misal: .ptptremove 24H1)
+             if (space === -1) {
+                 message.reply('⚠️ Format salah! Pisahkan Kode dan Nomor dengan spasi.\nContoh: .ptptremove 24H 1');
+                 return;
+             }
+
              const code = body.substring(0, space).toUpperCase();
-             const idx = parseInt(body.substring(space + 1).trim()) - 1;
+             const numInput = body.substring(space + 1).trim();
+             const idx = parseInt(numInput) - 1;
              
+             // 3. Validasi apakah Sesi Ada & Member Ada
              if(DB.ptpt_sessions[code] && DB.ptpt_sessions[code].participants[idx]) {
+                 // Simpan nama sebelum dihapus buat laporan
+                 const removedName = DB.ptpt_sessions[code].participants[idx].name;
+                 
+                 // Hapus member
                  DB.ptpt_sessions[code].participants.splice(idx, 1);
                  await saveDatabase(); 
 
-                 // --- TAMPILKAN LIST UPDATE ---
+                 // --- TAMPILKAN LIST UPDATE (AUTO SYNC) ---
                  const session = DB.ptpt_sessions[code];
                  let list = '';
                  for (let i = 0; i < 20; i++) {
@@ -547,13 +566,17 @@ client.on('message', async (message) => {
                     list += `${i+1}. ${p ? `${p.name} / ${p.roblox}${p.is_paid ? ' ✅' : ''}` : ''}\n`;
                  }
                  const footer = `\n-------------------------------\ncara bayar: ketik *.pay* untuk memunculkan qris\nnote: jangan lupa kirim buktinya ke sini dan tag admin juga ya😙`;
-                 const TPL = `📢 *MEMBER REMOVED (${code})*\n• Jenis: ${session.type}\n• Waktu: ${session.time}\n\n--------LIST MEMBER---------\nUSN Wa / USN rblox\n${list}\n*CARA JOIN ???*\n_ketik : .ptptlist ${code} (username)_${footer}`;
+                 const TPL = `📢 *MEMBER REMOVED (${code})*\n⚠️ ${removedName} telah dihapus dari list.\n\n• Jenis: ${session.type}\n• Waktu: ${session.time}\n\n--------LIST MEMBER---------\nUSN Wa / USN rblox\n${list}\n*CARA JOIN ???*\n_ketik : .ptptlist ${code} (username)_${footer}`;
 
                  const chat = await message.getChat();
                  if (fsSync.existsSync('./ptpt_image.png')) await sendMessageWithRetry(chat, MessageMedia.fromFilePath('./ptpt_image.png'), { caption: TPL });
                  else await sendMessageWithRetry(chat, TPL);
 
-             } else { message.reply('⚠️ Slot kosong/tidak ada/nomor salah.'); }
+             } else { 
+                 // Pesan Error Spesifik
+                 if (!DB.ptpt_sessions[code]) message.reply(`❌ Sesi dengan kode *${code}* tidak ditemukan.`);
+                 else message.reply(`⚠️ Member nomor *${numInput}* tidak ada di sesi *${code}*.`); 
+             }
         }
     }
 });
