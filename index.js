@@ -9,13 +9,20 @@ const COOLDOWN_IN_MS = 3000;
 const cooldowns = new Map();
 
 // --- DATABASE ---
+// Kita tambahkan 'admin_profiles' untuk menyimpan Data & Status Admin
 let DB = {
     config: { welcome: true, goodbye: true },
     shop_status: {}, 
     ptpt_sessions: {},
     admins: [ 
         '273838558449745', '256723633852445', '189601952063685' 
-    ]
+    ],
+    // MAPPING ID -> NAMA & STATUS (Default ON)
+    admin_profiles: {
+        '273838558449745': { name: 'Zuka', number: '081161626164', status: 'ON' },
+        '256723633852445': { name: 'Linnn', number: '081260809729', status: 'ON' },
+        '189601952063685': { name: 'Genky', number: '082185523432', status: 'ON' }
+    }
 };
 const DB_FILE = './database_v2.json';
 
@@ -24,7 +31,19 @@ async function loadDatabase() {
     if (fsSync.existsSync(DB_FILE)) {
         try {
             const raw = await fs.readFile(DB_FILE, 'utf8');
-            DB = { ...DB, ...JSON.parse(raw) };
+            const savedData = JSON.parse(raw);
+            
+            // Gabungkan data, tapi pastikan admin_profiles tetap ada struktur defaultnya jika file lama kosong
+            DB = { ...DB, ...savedData };
+            
+            // Jaga-jaga jika file database lama belum punya admin_profiles
+            if (!DB.admin_profiles) {
+                DB.admin_profiles = {
+                    '273838558449745': { name: 'Zuka', number: '081161626164', status: 'ON' },
+                    '256723633852445': { name: 'Linnn', number: '081260809729', status: 'ON' },
+                    '189601952063685': { name: 'Genky', number: '082185523432', status: 'ON' }
+                };
+            }
             console.log('✅ Database Loaded.');
         } catch (e) { saveDatabase(); }
     } else { saveDatabase(); }
@@ -66,6 +85,8 @@ const HELP_MEMBER = `🛠️ *MENU MEMBER* 🛠️
 
 const HELP_ADMIN = `
 ---------ADMIN ONLY------------
+✤ *.ON* 
+✤ *.OFF* 
 ✤ *.GC OPEN* 
 ✤ *.GC CLOSE*
 ✤ *.JOIN ON/OFF* 
@@ -108,6 +129,14 @@ function isUserAdmin(msg) {
     if(msg.from.includes('@g.us') && msg.author) userID = msg.author.split('@')[0];
     else userID = msg.from.split('@')[0];
     return DB.admins.includes(userID);
+}
+
+// Helper untuk mengambil ID Murni si Pengirim (untuk update status)
+function getSenderID(msg) {
+    let userID = (msg.author || msg.from).replace('@c.us', '').replace('@g.us', ''); 
+    if(msg.from.includes('@g.us') && msg.author) userID = msg.author.split('@')[0];
+    else userID = msg.from.split('@')[0];
+    return userID;
 }
 
 function getWaktu() {
@@ -185,7 +214,8 @@ async function handleStatusUpdate(msg, serviceName, imagePath, mode) {
 
 // === MAIN LOGIC ===
 const ADMIN_COMMANDS = [
-    '.gc', // <-- Command baru
+    '.on', '.off', // <-- Command baru
+    '.gc', 
     '.join', '.leave', '.p', 
     '.gigupdate', '.gigreset', '.gigclose',
     '.boosterupdate', '.boosterreset', '.boosterclose',
@@ -216,7 +246,29 @@ client.on('message', async (message) => {
 
     // --- COMMAND UMUM ---
     if (command === '.ping') return message.reply('Pong! 🏓');
-    if (command === '.admin') return message.reply('*ADMIN:* Zuka, Linnn, Genky.');
+    
+    // --- FITUR ADMIN DINAMIS (UPDATED) ---
+    if (command === '.admin') {
+        // Ambil data profile dari Database
+        const profiles = DB.admin_profiles;
+        let listAdmin = '';
+        let i = 1;
+
+        // Loop setiap admin di database untuk bikin list
+        for (const [id, data] of Object.entries(profiles)) {
+            // Tentukan emotikon berdasarkan status
+            const statusLabel = data.status === 'ON' ? '✅ [ON]' : '💤 [OFF]';
+            listAdmin += `*${i}. ${data.name}* ✦ ${data.number} ${statusLabel}\n`;
+            i++;
+        }
+
+        const text = `*LIST ADMIN SEONE STORE*
+-------------------------------
+${listAdmin}-------------------------------
+_Chat sopan, no spam, no call!_ 😉`;
+        return message.reply(text);
+    }
+
     if (command === '.pay') {
         try {
             if(fsSync.existsSync('./QRIS.png')) await sendReply(chat, MessageMedia.fromFilePath('./QRIS.png'), { caption: PAY_MSG });
@@ -272,28 +324,46 @@ client.on('message', async (message) => {
 
     // ================= ADMIN AREA =================
     if (isUserAdmin(message)) {
+
+        // --- FITUR BARU: SET STATUS ADMIN ---
+        if (command === '.on') {
+            const myID = getSenderID(message);
+            // Cek apakah ID pengirim ada di daftar profil admin
+            if (DB.admin_profiles[myID]) {
+                DB.admin_profiles[myID].status = 'ON';
+                await saveDatabase();
+                message.reply(`✅ Status Admin *${DB.admin_profiles[myID].name}* sekarang: *ON*`);
+            } else {
+                message.reply('⚠️ Profil kamu belum terdaftar di database Admin.');
+            }
+        }
+
+        if (command === '.off') {
+            const myID = getSenderID(message);
+            if (DB.admin_profiles[myID]) {
+                DB.admin_profiles[myID].status = 'OFF';
+                await saveDatabase();
+                message.reply(`💤 Status Admin *${DB.admin_profiles[myID].name}* sekarang: *OFF*`);
+            } else {
+                message.reply('⚠️ Profil kamu belum terdaftar di database Admin.');
+            }
+        }
         
-        // --- FITUR BARU: GC OPEN/CLOSE ---
+        // --- FITUR GC OPEN/CLOSE ---
         if (command === '.gc') {
             const sub = args[1]; // open atau close
-            
-            // Pastikan ini di Grup
             if (!chat.isGroup) return message.reply('❌ Perintah ini hanya untuk Grup.');
 
             if (sub === 'close') {
                 try {
                     await chat.setMessagesAdminsOnly(true);
                     message.reply('⛔ *GRUP DITUTUP ADMIN*\nSilakan istirahat, chat dibuka lagi nanti. 👋');
-                } catch (e) {
-                    message.reply('❌ Gagal! Pastikan BOT sudah jadi ADMIN GRUP.');
-                }
+                } catch (e) { message.reply('❌ Gagal! Pastikan BOT sudah jadi ADMIN GRUP.'); }
             } else if (sub === 'open') {
                 try {
                     await chat.setMessagesAdminsOnly(false);
                     message.reply('✅ *GRUP DIBUKA KEMBALI*\nSilakan chat dengan sopan. Happy Shopping! 🔥');
-                } catch (e) {
-                    message.reply('❌ Gagal! Pastikan BOT sudah jadi ADMIN GRUP.');
-                }
+                } catch (e) { message.reply('❌ Gagal! Pastikan BOT sudah jadi ADMIN GRUP.'); }
             } else {
                 message.reply('⚠️ *FORMAT SALAH!*\nContoh:\n.gc open (Buka Grup)\n.gc close (Tutup Grup)');
             }
