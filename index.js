@@ -9,7 +9,7 @@ const COOLDOWN_IN_MS = 3000;
 const cooldowns = new Map();
 
 // --- DATABASE ---
-// Kita tambahkan 'admin_profiles' untuk menyimpan Data & Status Admin
+// ⚠️ PENTING: GANTI ANGKA ID DI BAWAH INI DENGAN ID ASLI HASIL COMMAND .cekid
 let DB = {
     config: { welcome: true, goodbye: true },
     shop_status: {}, 
@@ -17,7 +17,6 @@ let DB = {
     admins: [ 
         '273838558449745', '256723633852445', '189601952063685' 
     ],
-    // MAPPING ID -> NAMA & STATUS (Default ON)
     admin_profiles: {
         '273838558449745': { name: 'Zuka', number: '081161626164', status: 'ON' },
         '256723633852445': { name: 'Linnn', number: '081260809729', status: 'ON' },
@@ -32,11 +31,9 @@ async function loadDatabase() {
         try {
             const raw = await fs.readFile(DB_FILE, 'utf8');
             const savedData = JSON.parse(raw);
-            
-            // Gabungkan data, tapi pastikan admin_profiles tetap ada struktur defaultnya jika file lama kosong
             DB = { ...DB, ...savedData };
             
-            // Jaga-jaga jika file database lama belum punya admin_profiles
+            // Fallback jika data lama belum punya profile
             if (!DB.admin_profiles) {
                 DB.admin_profiles = {
                     '273838558449745': { name: 'Zuka', number: '081161626164', status: 'ON' },
@@ -54,8 +51,7 @@ async function saveDatabase() {
 }
 
 // --- TEMPLATES ---
-const SEONE_MSG_BODY = `*SeoneStore.ID* 
-✅Murah, Aman & Trusted 100%
+const SEONE_MSG_BODY = `*SeoneStore.ID* ✅Murah, Aman & Trusted 100%
 ⚡ Proses Cepat (1-10 Menit) | 💳 Bayar via : Qris
 ⏰ Open Daily: 05.00 - 23.00 WIB
 ⭐ Ketik *.help* untuk info lebih lengkap
@@ -75,31 +71,20 @@ const VILOG_TNC = `🔐 *INFORMASI VIA LOGIN (VILOG)* 🔐
 const HELP_MEMBER = `🛠️ *MENU MEMBER* 🛠️
 ✤ *.PAY* : Munculkan QRIS
 ✤ *.ADMIN* : List Admin
-✤ *.GIG* 
-✤ *.BOOSTER* 
-✤ *.VILOG*
+✤ *.GIG* ✤ *.BOOSTER* ✤ *.VILOG*
 ✤ *.PTPTLIST [KODE] [USER]* : Join Sesi
 ✤ *.PTPTUPDATE* : Cek Sesi Aktif
-✤ *.HELP* 
-✤ *.PING*`;
+✤ *.HELP* ✤ *.PING*`;
 
 const HELP_ADMIN = `
 ---------ADMIN ONLY------------
-✤ *.ON* 
-✤ *.OFF* 
-✤ *.GC OPEN* 
-✤ *.GC CLOSE*
-✤ *.JOIN ON/OFF* 
-✤ *.LEAVE ON/OFF*
-✤ *.GIGUPDATE* 
-✤ *.GIGRESET* 
-✤ *.GIGCLOSE*
-✤ *.BOOSTERUPDATE* 
-✤ *.BOOSTERRESET* 
-✤ *.BOOSTERCLOSE*
-✤ *.VILOGUPDATE* 
-✤ *.VILOGRESET* 
-✤ *.VILOGCLOSE*
+✤ *.ON* | *.OFF* (Set Status Admin)
+✤ *.CEKID* (Cek ID WA Kamu)
+✤ *.GC OPEN* | *.GC CLOSE*
+✤ *.JOIN ON/OFF* | *.LEAVE ON/OFF*
+✤ *.GIGUPDATE* | *.GIGRESET* | *.GIGCLOSE*
+✤ *.BOOSTERUPDATE* | *.BOOSTERRESET* | *.BOOSTERCLOSE*
+✤ *.VILOGUPDATE* | *.VILOGRESET* | *.VILOGCLOSE*
 ✤ *.PTPTOPEN* : Buka Sesi
 ✤ *.PTPTCLOSE* : Tutup Sesi
 ✤ *.PTPTSET* : Edit Jam
@@ -115,7 +100,11 @@ const client = new Client({
     authStrategy: new LocalAuth(),
     puppeteer: {
         executablePath: '/data/data/com.termux/files/usr/bin/chromium-browser',
-        args: [ '--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage', '--disable-accelerated-2d-canvas', '--no-first-run', '--no-zygote', '--single-process' ]
+        args: [ 
+            '--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage', 
+            '--disable-accelerated-2d-canvas', '--no-first-run', '--no-zygote', 
+            '--single-process', '--disable-gpu'
+        ]
     }
 });
 
@@ -131,7 +120,6 @@ function isUserAdmin(msg) {
     return DB.admins.includes(userID);
 }
 
-// Helper untuk mengambil ID Murni si Pengirim (untuk update status)
 function getSenderID(msg) {
     let userID = (msg.author || msg.from).replace('@c.us', '').replace('@g.us', ''); 
     if(msg.from.includes('@g.us') && msg.author) userID = msg.author.split('@')[0];
@@ -214,7 +202,7 @@ async function handleStatusUpdate(msg, serviceName, imagePath, mode) {
 
 // === MAIN LOGIC ===
 const ADMIN_COMMANDS = [
-    '.on', '.off', // <-- Command baru
+    '.on', '.off', '.cekid', // Command baru
     '.gc', 
     '.join', '.leave', '.p', 
     '.gigupdate', '.gigreset', '.gigclose',
@@ -232,7 +220,10 @@ client.on('message', async (message) => {
 
     // 1. CEK ADMIN ISENG
     if (ADMIN_COMMANDS.includes(command)) {
-        if (!isUserAdmin(message)) return message.reply("kamu bukan admin jangan coba coba ya dek yaaa😙"); 
+        // Pengecualian: .cekid bisa diakses siapa saja (untuk setup awal)
+        if (command !== '.cekid' && !isUserAdmin(message)) {
+            return message.reply("kamu bukan admin jangan coba coba ya dek yaaa😙"); 
+        }
     }
 
     // 2. COOLDOWN
@@ -246,17 +237,20 @@ client.on('message', async (message) => {
 
     // --- COMMAND UMUM ---
     if (command === '.ping') return message.reply('Pong! 🏓');
+
+    // --- CEK ID (UNTUK SETUP) ---
+    if (command === '.cekid') {
+        const myID = getSenderID(message);
+        message.reply(`🆔 *ID WhatsApp Kamu:* \n${myID}\n\n_Salin angka di atas dan tempel ke bagian 'admins' & 'admin_profiles' di kodingan._`);
+    }
     
-    // --- FITUR ADMIN DINAMIS (UPDATED) ---
+    // --- FITUR ADMIN DINAMIS ---
     if (command === '.admin') {
-        // Ambil data profile dari Database
         const profiles = DB.admin_profiles;
         let listAdmin = '';
         let i = 1;
 
-        // Loop setiap admin di database untuk bikin list
         for (const [id, data] of Object.entries(profiles)) {
-            // Tentukan emotikon berdasarkan status
             const statusLabel = data.status === 'ON' ? '✅ [ON]' : '💤 [OFF]';
             listAdmin += `*${i}. ${data.name}* ✦ ${data.number} ${statusLabel}\n`;
             i++;
@@ -325,16 +319,15 @@ _Chat sopan, no spam, no call!_ 😉`;
     // ================= ADMIN AREA =================
     if (isUserAdmin(message)) {
 
-        // --- FITUR BARU: SET STATUS ADMIN ---
+        // --- FITUR STATUS ADMIN ---
         if (command === '.on') {
             const myID = getSenderID(message);
-            // Cek apakah ID pengirim ada di daftar profil admin
             if (DB.admin_profiles[myID]) {
                 DB.admin_profiles[myID].status = 'ON';
                 await saveDatabase();
                 message.reply(`✅ Status Admin *${DB.admin_profiles[myID].name}* sekarang: *ON*`);
             } else {
-                message.reply('⚠️ Profil kamu belum terdaftar di database Admin.');
+                message.reply('⚠️ ID kamu belum terdaftar di kodingan Admin. Cek pakai .cekid');
             }
         }
 
@@ -345,13 +338,13 @@ _Chat sopan, no spam, no call!_ 😉`;
                 await saveDatabase();
                 message.reply(`💤 Status Admin *${DB.admin_profiles[myID].name}* sekarang: *OFF*`);
             } else {
-                message.reply('⚠️ Profil kamu belum terdaftar di database Admin.');
+                message.reply('⚠️ ID kamu belum terdaftar di kodingan Admin. Cek pakai .cekid');
             }
         }
         
         // --- FITUR GC OPEN/CLOSE ---
         if (command === '.gc') {
-            const sub = args[1]; // open atau close
+            const sub = args[1]; 
             if (!chat.isGroup) return message.reply('❌ Perintah ini hanya untuk Grup.');
 
             if (sub === 'close') {
