@@ -49,8 +49,7 @@ async function saveDatabase() {
 }
 
 // --- TEMPLATES ---
-const SEONE_MSG_BODY = `*SeoneStore.ID* 
-✅Murah, Aman & Trusted 100%
+const SEONE_MSG_BODY = `*SeoneStore.ID* ✅Murah, Aman & Trusted 100%
 
 ⚡ Proses Cepat (1-10 Menit)
 💳 Bayar via : Qris
@@ -103,15 +102,9 @@ const HELP_ADMIN_ONLY = `
 ---------ADMIN ONLY------------
 ✤ *.JOIN ON/OFF* :Atur Auto Welcome
 ✤ *.LEAVE ON/OFF* :Atur Auto Goodbye
-✤ *.GIGUPDATE* 
-✤ *.GIGRESET* 
-✤ *.GIGCLOSE*
-✤ *.BOOSTERUPDATE* 
-✤ *.BOOSTERRESET* 
-✤ *.BOOSTERCLOSE*
-✤ *.VILOGUPDATE* 
-✤ *.VILOGRESET* 
-✤ *.VILOGCLOSE*
+✤ *.GIGUPDATE* ✤ *.GIGRESET* ✤ *.GIGCLOSE*
+✤ *.BOOSTERUPDATE* ✤ *.BOOSTERRESET* ✤ *.BOOSTERCLOSE*
+✤ *.VILOGUPDATE* ✤ *.VILOGRESET* ✤ *.VILOGCLOSE*
 ✤ *.PTPTOPEN* :Buka Sesi Baru
 ✤ *.PTPTCLOSE* :Tutup Sesi
 ✤ *.PTPTSET* :Edit Jam Sesi
@@ -199,7 +192,7 @@ async function kirimSapaanDenganGambar(chatTarget, contactToTag) {
     } catch(e) {}
 }
 
-// --- LOGIC UTAMA (MEMAKAI RAM DB) ---
+// --- LOGIC HELPER STATUS VIEW ---
 async function handleStatusView(msg, serviceName, imagePath) {
     try {
         const data = DB.shop_status[serviceName] || { status: 'OPEN', date: 'Belum update', time: '-' };
@@ -253,14 +246,33 @@ async function handleStatusUpdate(msg, chat, serviceName, imagePath, isReset = f
     } catch (error) { console.error(error); msg.reply('❌ Gagal update.'); }
 }
 
-// Otak Bot
+// === DAFTAR PERINTAH KHUSUS ADMIN ===
+const ADMIN_COMMANDS = [
+    '.join', '.leave', '.p', 
+    '.gigupdate', '.gigreset', '.gigclose',
+    '.boosterupdate', '.boosterreset', '.boosterclose',
+    '.vilogupdate', '.vilogreset', '.vilogclose',
+    '.ptptopen', '.ptptclose', '.ptptset', '.ptptpaid', '.ptptremove', '.ptptreset'
+];
+
+// --- OTAK BOT (HANDLER PESAN) ---
 client.on('message', async (message) => {
     if (message.timestamp < BOT_START_TIME) return; 
-    const msg = message.body.toLowerCase();
+    const msgBody = message.body;
+    const msg = msgBody.toLowerCase();
+    const sender = message.from;
+
+    // 1. CEK ADMIN COMMAND TAPI BUKAN ADMIN
+    const commandUsed = msg.split(' ')[0];
+    if (ADMIN_COMMANDS.includes(commandUsed)) {
+        if (!isUserAdmin(message)) {
+            // Ini pesan 'pedas' untuk member iseng
+            return message.reply("kamu bukan admin jangan coba coba ya dek yaaa😙"); 
+        }
+    }
 
     // COOLDOWN PER USER
     if (msg.startsWith('.')) {
-        const sender = message.from;
         const now = Date.now();
         if (cooldowns.has(sender)) {
             if (now < cooldowns.get(sender) + COOLDOWN_IN_MS) return;
@@ -269,7 +281,7 @@ client.on('message', async (message) => {
         setTimeout(() => cooldowns.delete(sender), COOLDOWN_IN_MS);
     } else { return; }
 
-    // --- COMMAND MEMBER ---
+    // --- COMMAND MEMBER (UMUM) ---
     if(msg === '.ping') {
         const latency = Date.now() - (message.timestamp * 1000);
         message.reply(`Pong! 🏓\nRespond Time: *${latency}ms*`);
@@ -308,7 +320,7 @@ client.on('message', async (message) => {
         } catch(e) { message.reply('Error sistem.'); }
     }
 
-    // --- PTPT LIST (JOIN) ---
+    // --- PTPT LIST (JOIN MEMBER) ---
     if (msg.startsWith('.ptptlist')) {
         let txt = message.body.slice(10).trim();
         if (!txt) { message.reply(`⚠️ Format: .ptptlist [Kode] [Username]`); return; }
@@ -318,7 +330,6 @@ client.on('message', async (message) => {
         let user = args.slice(1).join(' ');
 
         try {
-            // Cek Session
             if (!DB.ptpt_sessions[code]) { message.reply(`⚠️ Sesi *${code}* tidak ditemukan. Cek .ptptupdate`); return; }
             const session = DB.ptpt_sessions[code];
             
@@ -334,11 +345,11 @@ client.on('message', async (message) => {
             const waName = contact.pushname || contact.number;
             const waId = contact.id._serialized;
 
-            // Masukkan Data ke RAM & Save
+            // Masukkan Data
             session.participants.push({ name: waName, roblox: user, wa_id: waId, is_paid: false });
             await saveDatabase();
 
-            // Tampilkan List
+            // Tampilkan List UPDATE
             let list = '';
             for (let i = 0; i < 20; i++) {
                 let p = session.participants[i];
@@ -346,12 +357,14 @@ client.on('message', async (message) => {
             }
             const footer = `\n-------------------------------\ncara bayar: ketik *.pay* untuk memunculkan qris\nnote: jangan lupa kirim buktinya ke sini dan tag admin juga ya😙`;
             const TPL = `📢 SESSION INFO (${code})\n• Jenis: ${session.type}\n• Waktu: ${session.time}\n• Status: OPEN (${session.participants.length}/20)\n\n--------LIST MEMBER---------\nUSN Wa / USN rblox\n${list}\n*CARA JOIN???*\n_ketik : .ptptlist ${code} (username)_${footer}`;
-            await message.reply(TPL);
+            
+            if (fsSync.existsSync('./ptpt_image.png')) await sendMessageWithRetry(client, message.from, MessageMedia.fromFilePath('./ptpt_image.png'), { caption: TPL });
+            else await message.reply(TPL);
 
         } catch (error) { console.error(error); message.reply('❌ Error system.'); }
     }
 
-    // --- PTPT UPDATE ---
+    // --- PTPT UPDATE (CEK STATUS) ---
     if(msg.startsWith('.ptptupdate')) {
         const code = message.body.slice(12).trim().split(' ')[0].toUpperCase();
         try {
@@ -374,7 +387,6 @@ client.on('message', async (message) => {
             } else {
                 const keys = Object.keys(DB.ptpt_sessions);
                 if (keys.length === 0) { message.reply('⚠️ Belum ada sesi aktif.'); return; }
-                
                 let txt = `📋 *DAFTAR SESI AKTIF:*\n\n`;
                 keys.forEach(k => {
                     const s = DB.ptpt_sessions[k];
@@ -386,14 +398,16 @@ client.on('message', async (message) => {
         } catch (e) { console.error(e); message.reply('❌ Error.'); }
     }
 
-    // --- AREA ADMIN ---
+    // ==========================================
+    // --- AREA ADMIN (DENGAN PENGECEKAN) ---
+    // ==========================================
     if(isUserAdmin(message)) {
+        
         // SETTINGS JOIN/LEAVE
         if (msg === '.join on') { DB.config.welcome = true; await saveDatabase(); message.reply('✅ Auto Welcome: ON'); }
         if (msg === '.join off') { DB.config.welcome = false; await saveDatabase(); message.reply('🚫 Auto Welcome: OFF'); }
         if (msg === '.leave on') { DB.config.goodbye = true; await saveDatabase(); message.reply('✅ Auto Goodbye: ON'); }
         if (msg === '.leave off') { DB.config.goodbye = false; await saveDatabase(); message.reply('🚫 Auto Goodbye: OFF'); }
-
         if (msg === '.testgreet') { const contact = await message.getContact(); await kirimSapaanDenganGambar(await message.getChat(), contact); }
 
         // BROADCAST
@@ -405,20 +419,19 @@ client.on('message', async (message) => {
             await sendMessageWithRetry(chat, txt, { mentions });
         }
 
-        // GIG/BOOSTER/VILOG ADMIN
+        // UPDATE STATUS
         if(msg === '.gigupdate') await handleStatusUpdate(message, await message.getChat(), 'GIG', './pricelist.png');
         if(msg === '.gigclose') await handleStatusUpdate(message, null, 'GIG', null, false, true);
         if(msg === '.gigreset') await handleStatusUpdate(message, null, 'GIG', './pricelist.png', true);
-
         if(msg === '.boosterupdate') await handleStatusUpdate(message, await message.getChat(), 'BOOSTER', './pricelist_booster.png');
         if(msg === '.boosterclose') await handleStatusUpdate(message, null, 'BOOSTER', null, false, true);
         if(msg === '.boosterreset') await handleStatusUpdate(message, null, 'BOOSTER', './pricelist_booster.png', true);
-
         if(msg === '.vilogupdate') await handleStatusUpdate(message, await message.getChat(), 'VILOG', './pricelist_vilog.png');
         if(msg === '.vilogclose') await handleStatusUpdate(message, null, 'VILOG', null, false, true);
         if(msg === '.vilogreset') await handleStatusUpdate(message, null, 'VILOG', './pricelist_vilog.png', true);
 
-        // PTPT ADMIN COMMANDS
+        // --- PTPT ADMIN COMMANDS ---
+
         if(msg.startsWith('.ptptopen')) {
             const body = message.body.slice(9).trim();
             const space = body.indexOf(' ');
@@ -467,12 +480,14 @@ client.on('message', async (message) => {
             message.reply(`✅ Waktu sesi ${code} diupdate.`);
         }
 
+        // --- FIX PTPT PAID (AUTO SYNC) ---
         if(msg.startsWith('.ptptpaid')) {
             const body = message.body.slice(9).trim();
             const space = body.indexOf(' ');
-            if (space === -1) return;
+            if (space === -1) { message.reply('⚠️ Format: .ptptpaid [KODE] [No Urut, No Urut...]'); return; }
+            
             const code = body.substring(0, space).toUpperCase();
-            const nums = body.substring(space + 1).split(',').map(n => parseInt(n.trim()) - 1);
+            const nums = body.substring(space + 1).split(/[\s,]+/).map(n => parseInt(n.trim()) - 1);
             
             if(!DB.ptpt_sessions[code]) { message.reply('❌ Sesi tak ditemukan.'); return; }
             const session = DB.ptpt_sessions[code];
@@ -481,9 +496,10 @@ client.on('message', async (message) => {
             nums.forEach(i => { 
                 if (session.participants[i]) { session.participants[i].is_paid = true; updated++; } 
             });
+            
             if(updated > 0) await saveDatabase();
             
-            // Repost List
+            // --- TAMPILKAN HASILNYA (SYNC) ---
             let list = '';
             for (let i = 0; i < 20; i++) {
                 let p = session.participants[i];
@@ -493,9 +509,8 @@ client.on('message', async (message) => {
             const TPL = `📢 *PAYMENT CONFIRMED (${code})*\n• Jenis: ${session.type}\n• Waktu: ${session.time}\n\n--------LIST MEMBER---------\nUSN Wa / USN rblox\n${list}_LUNAS!_ ✅\n*CARA JOIN ???*\n_ketik : .ptptlist ${code} (username)_${footer}`;
             
             const chat = await message.getChat();
-            const mentions = await getMentionsAll(chat);
-            if (fsSync.existsSync('./ptpt_image.png')) await sendMessageWithRetry(chat, MessageMedia.fromFilePath('./ptpt_image.png'), { caption: TPL, mentions });
-            else await sendMessageWithRetry(chat, TPL, { mentions });
+            if (fsSync.existsSync('./ptpt_image.png')) await sendMessageWithRetry(chat, MessageMedia.fromFilePath('./ptpt_image.png'), { caption: TPL });
+            else await sendMessageWithRetry(chat, TPL);
         }
 
         if(msg.startsWith('.ptptreset')) {
@@ -513,6 +528,7 @@ client.on('message', async (message) => {
             }
         }
         
+        // --- FIX PTPT REMOVE (AUTO SYNC) ---
         if(msg.startsWith('.ptptremove')) {
              const body = message.body.slice(11).trim();
              const space = body.indexOf(' ');
@@ -521,9 +537,23 @@ client.on('message', async (message) => {
              
              if(DB.ptpt_sessions[code] && DB.ptpt_sessions[code].participants[idx]) {
                  DB.ptpt_sessions[code].participants.splice(idx, 1);
-                 await saveDatabase();
-                 message.reply(`✅ Member no ${idx+1} dihapus dari ${code}.`);
-             } else { message.reply('⚠️ Slot kosong/tidak ada.'); }
+                 await saveDatabase(); 
+
+                 // --- TAMPILKAN LIST UPDATE ---
+                 const session = DB.ptpt_sessions[code];
+                 let list = '';
+                 for (let i = 0; i < 20; i++) {
+                    let p = session.participants[i];
+                    list += `${i+1}. ${p ? `${p.name} / ${p.roblox}${p.is_paid ? ' ✅' : ''}` : ''}\n`;
+                 }
+                 const footer = `\n-------------------------------\ncara bayar: ketik *.pay* untuk memunculkan qris\nnote: jangan lupa kirim buktinya ke sini dan tag admin juga ya😙`;
+                 const TPL = `📢 *MEMBER REMOVED (${code})*\n• Jenis: ${session.type}\n• Waktu: ${session.time}\n\n--------LIST MEMBER---------\nUSN Wa / USN rblox\n${list}\n*CARA JOIN ???*\n_ketik : .ptptlist ${code} (username)_${footer}`;
+
+                 const chat = await message.getChat();
+                 if (fsSync.existsSync('./ptpt_image.png')) await sendMessageWithRetry(chat, MessageMedia.fromFilePath('./ptpt_image.png'), { caption: TPL });
+                 else await sendMessageWithRetry(chat, TPL);
+
+             } else { message.reply('⚠️ Slot kosong/tidak ada/nomor salah.'); }
         }
     }
 });
