@@ -496,7 +496,7 @@ async function sendPtptList(chat, code, withTag = false) {
 
     const caption = 
 `📢 *SESSION INFO (${code})*
-🎮 *Game:* ${session.type}
+🗓️ *Tanggal:* ${session.type}
 ⏰ *Jam:* ${session.time} ${priceStr}
 📊 *Status:* ${statusStr}
 
