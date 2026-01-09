@@ -71,7 +71,9 @@ const VILOG_TNC = `🔐 *INFORMASI VIA LOGIN (VILOG)* 🔐
 const HELP_MEMBER = `🛠️ *MENU MEMBER* 🛠️
 ✤ *.PAY* : Munculkan QRIS
 ✤ *.ADMIN* : List Admin
-✤ *.GIG* ✤ *.BOOSTER* ✤ *.VILOG*
+✤ *.GIG* 
+✤ *.BOOSTER* 
+✤ *.VILOG*
 ✤ *.PTPTLIST [KODE] [USER]* : Join Sesi
 ✤ *.PTPTUPDATE* : Cek Sesi Aktif
 ✤ *.HELP* ✤ *.PING*`;
@@ -79,12 +81,17 @@ const HELP_MEMBER = `🛠️ *MENU MEMBER* 🛠️
 const HELP_ADMIN = `
 ---------ADMIN ONLY------------
 ✤ *.ON* | *.OFF* (Set Status Admin)
-✤ *.CEKID* (Cek ID WA Kamu)
 ✤ *.GC OPEN* | *.GC CLOSE*
 ✤ *.JOIN ON/OFF* | *.LEAVE ON/OFF*
-✤ *.GIGUPDATE* | *.GIGRESET* | *.GIGCLOSE*
-✤ *.BOOSTERUPDATE* | *.BOOSTERRESET* | *.BOOSTERCLOSE*
-✤ *.VILOGUPDATE* | *.VILOGRESET* | *.VILOGCLOSE*
+✤ *.GIGUPDATE* 
+✤ *.GIGRESET* 
+✤ *.GIGCLOSE*
+✤ *.BOOSTERUPDATE* 
+✤ *.BOOSTERRESET* 
+✤ *.BOOSTERCLOSE*
+✤ *.VILOGUPDATE* 
+✤ *.VILOGRESET* 
+✤ *.VILOGCLOSE*
 ✤ *.PTPTOPEN* : Buka Sesi
 ✤ *.PTPTCLOSE* : Tutup Sesi
 ✤ *.PTPTSET* : Edit Jam
