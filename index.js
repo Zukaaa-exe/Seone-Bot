@@ -18,9 +18,9 @@ let DB = {
         '273838558449745', '256723633852445', '189601952063685' 
     ],
     admin_profiles: {
-        '273838558449745': { name: 'Zuka', number: '081161626164', status: 'ON' },
-        '256723633852445': { name: 'Linnn', number: '081260809729', status: 'ON' },
-        '189601952063685': { name: 'Genky', number: '082185523432', status: 'ON' }
+        '189601952063685': { name: 'Zuka', number: '081161626164', status: 'ON' },
+        '273838558449745': { name: 'Linnn', number: '081260809729', status: 'ON' },
+        '256723633852445': { name: 'Genky', number: '082185523432', status: 'ON' }
     }
 };
 const DB_FILE = './database_v2.json';
